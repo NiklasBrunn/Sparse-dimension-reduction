@@ -39,7 +39,7 @@ function compL2Boost!(BAE::BoostingAutoencoder, l::Int, X::AbstractMatrix{<:Abst
         optindex = findmax(collect(unibeta[j]^2 * denom[j] for j in 1:p))[2]
 
         #update β by adding a re-scaled version of the selected OLLS-estimator, by a scalar value ϵ ∈ (0,1):
-        BAE.coeffs[optindex, l] .+= unibeta[union(nz_inds, optindex)] .* BAE.HP.ϵ  
+        BAE.coeffs[union(nz_inds, optindex), l] .+= unibeta[union(nz_inds, optindex)] .* BAE.HP.ϵ  
 
     end
 
