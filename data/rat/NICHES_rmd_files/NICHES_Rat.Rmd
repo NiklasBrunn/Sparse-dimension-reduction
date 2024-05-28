@@ -1,0 +1,65 @@
+---
+title: "CCIM creation using NICHES"
+author: "Original: Micha Sam Brickman Raredon & Junchen Yang; Adapted by: Niklas Brunn"
+date: "`r Sys.Date()`"
+vignette: |
+  %\VignetteIndexEntry{Cellular Relationships in the Rat Alveolus} %\VignetteEngine{knitr::rmarkdown} %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+Vignette for loading rat alveolus leveraging cell-cell data from https://www.science.org/doi/10.1126/sciadv.aaw3851, to create a CCIM using NICHES. Vignette was created and run using RStudio v‘2023.12.1.402’
+
+## Load Dependencies:
+```{r message=F, warning=F}
+require(Seurat)
+require(NICHES)
+library(ggplot2)
+```
+
+## Load Data (takes a couple of minutes ...):
+```{r message=F, warning=F}
+options(timeout = max(1200, getOption("timeout"))) #set download time limit to 12 minutes ...
+url <- "https://zenodo.org/record/6846618/files/raredon_2019_rat.Robj"
+temp_file <- tempfile(fileext = ".Robj")
+download.file(url, destfile = temp_file, mode = "wb")
+load(temp_file)
+
+rm(url, temp_file)
+gc()
+
+TSNEPlot(rat)
+```
+
+## Subset Seurat object:
+```{r message=F, warning=F}
+rat.sub <- subset(rat,idents = c('ATII','ATI',
+                                 'Mac_alv','Mac_inter',
+                                 'Fib_Col13a1+','Fib_Col14a1+','SMCs',
+                                 'EC_cap','EC_vasc'))
+TSNEPlot(rat.sub)
+```
+## Run NICHES:
+```{r message=F, warning=F,fig.width = 12,fig.height = 12}
+rat.sub@meta.data$cell_types <- Idents(rat.sub)
+lung.cc <- RunNICHES(rat.sub,
+                        assay = 'alra', 
+                        species = 'rat',
+                        LR.database = 'fantom5',
+                        cell_types = "cell_types",
+                        CellToCell = T) #Note the difference in input arguments here
+cc.object <- lung.cc$CellToCell #Extract the output of interest
+```
+## Save the Seurat and the NICHES object:
+```{r message=F, warning=F}
+cur_wd <- getwd()
+parent_dir <- dirname(cur_wd)
+print(paste0(parent_dir, "/Rat_NICHES_CellToCell.rds"))
+saveRDS(rat.sub, file = paste0(parent_dir, "/Rat_Seurat_sub.rds"))
+saveRDS(cc.object, file = paste0(parent_dir, "/Rat_NICHES_CellToCell.rds"))
+```
