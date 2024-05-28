@@ -26,6 +26,8 @@ function compL2Boost!(BAE::BoostingAutoencoder, l::Int, X::AbstractMatrix{<:Abst
 
     for step in 1:BAE.HP.M
 
+        nz_inds = findall(x->x!=0, BAE.coeffs[:, l])
+
         #compute the residual as the difference of the target vector and the current fit:
         curmodel = X * BAE.coeffs[:, l]
         res = y .- curmodel
@@ -37,7 +39,7 @@ function compL2Boost!(BAE::BoostingAutoencoder, l::Int, X::AbstractMatrix{<:Abst
         optindex = findmax(collect(unibeta[j]^2 * denom[j] for j in 1:p))[2]
 
         #update β by adding a re-scaled version of the selected OLLS-estimator, by a scalar value ϵ ∈ (0,1):
-        BAE.coeffs[optindex, l] += unibeta[optindex] * BAE.HP.ϵ 
+        BAE.coeffs[optindex, l] += unibeta[union(nz_inds, optindex)] * BAE.HP.ϵ  
 
     end
 
