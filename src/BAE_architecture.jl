@@ -49,8 +49,8 @@ function Base.summary(BAE::BoostingAutoencoder)
      training epochs: $(HP.epochs),
      batchsize: $(HP.batchsize),
      learning rate for decoder parameter: $(HP.η),
-     decoder parameter penalization: $(HP.λ),
-     L2 regularization parameter for decoder parameter: $(HP.ϵ),
+     weight decay parameter for decoder parameters: $(HP.λ),
+     step size for boosting updates: $(HP.ϵ),
      number of boosting iterations: $(HP.M)."
     )
 end
