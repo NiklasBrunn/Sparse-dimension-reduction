@@ -13,9 +13,6 @@ using UMAP;
 using ProgressMeter;
 using ColorSchemes;
 using CSV;
-#using Distributions;
-#using ExcelFiles;
-#using XLSX;
 
 include("BAE_architecture.jl");
 include("utils.jl");
