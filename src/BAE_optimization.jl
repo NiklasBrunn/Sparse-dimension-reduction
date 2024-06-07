@@ -224,5 +224,5 @@ function train_BAE_traintest!(X_train::AbstractMatrix{<:AbstractFloat}, X_test::
 
     end
 
-    return mean_trainlossPerEpoch, test_lossPerEpoch, sparsity_level, entanglement_score, clustering_score
+    return mean_trainlossPerEpoch, test_lossPerEpoch, sparsity_level, entanglement_score, clustering_score, silhouettes
 end
