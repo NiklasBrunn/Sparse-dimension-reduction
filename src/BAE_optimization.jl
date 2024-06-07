@@ -114,7 +114,7 @@ function train_BAE!(X::AbstractMatrix{<:AbstractFloat}, BAE::BoostingAutoencoder
         end
 
         push!(mean_trainlossPerEpoch, mean(batchLosses))
-        push!(sparsity_level, 1 - (100 * count(x->x!=0, BAE.coeffs) / length(BAE.coeffs))) # Percentage of nonzero elements in the encoder weight matrix (lower values are better)
+        push!(sparsity_level, 1 - (count(x->x!=0, BAE.coeffs) / length(BAE.coeffs))) # Percentage of nonzero elements in the encoder weight matrix (lower values are better)
         Z = get_latentRepresentation(BAE, Xt)
         push!(entanglement_score, sum(UpperTriangular(abs.(cor(Z, dims=2)))) - BAE.HP.zdim) # Offdiagonal of the Pearson correlation coefficient (upper triangular) matrix between the latent dimensions (closer to 0 is better)
         Z_cluster = softmax(split_vectors(Z))
@@ -191,7 +191,7 @@ function train_BAE_traintest!(X_train::AbstractMatrix{<:AbstractFloat}, X_test::
 
         push!(mean_trainlossPerEpoch, mean(batchLosses))
         push!(test_lossPerEpoch, Flux.mse(BAE.decoder(get_latentRepresentation(BAE, Xt_test)), Xt_test))
-        push!(sparsity_level, 1 - (100 * count(x->x!=0, BAE.coeffs) / length(BAE.coeffs))) # Percentage of nonzero elements in the encoder weight matrix (lower values are better)
+        push!(sparsity_level, 1 - (count(x->x!=0, BAE.coeffs) / length(BAE.coeffs))) # Percentage of nonzero elements in the encoder weight matrix (lower values are better)
         Z = get_latentRepresentation(BAE, hcat(Xt_train, Xt_test))
         push!(entanglement_score, sum(UpperTriangular(abs.(cor(Z, dims=2)))) - BAE.HP.zdim) # Offdiagonal of the Pearson correlation coefficient (upper triangular) matrix between the latent dimensions (closer to 0 is better)
         Z_cluster = softmax(split_vectors(Z))
