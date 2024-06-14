@@ -55,7 +55,9 @@ function Base.summary(BAE::BoostingAutoencoder)
     )
 end
 
-function generate_BAEdecoder(p::Int, HP::Hyperparameter; soft_clustering::Bool=true)
+function generate_BAEdecoder(p::Int, HP::Hyperparameter; soft_clustering::Bool=true, modelseed::Int=42)
+    Random.seed!(modelseed)
+
     if soft_clustering
         decoder = Chain(x -> split_vectors(x), x -> softmax(x), Dense(2*HP.zdim => p, tanh_fast), Dense(p => p));
         @info "Decoder with 4 layers: First two layers (split_softmax) are non trainable, third layer is Dense(2*HP.zdim => p, tanh), fourth layer is Dense(p => p)"

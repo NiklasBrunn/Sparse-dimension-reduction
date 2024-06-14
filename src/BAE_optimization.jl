@@ -78,7 +78,9 @@ function disentangled_compL2Boost!(BAE::BoostingAutoencoder, batch::AbstractMatr
 end
 
 #---training function for a BAE with the disentanglement constraint:
-function train_BAE!(X::AbstractMatrix{<:AbstractFloat}, BAE::BoostingAutoencoder; soft_clustering::Bool=false, MD::Union{Nothing, MetaData}=nothing, save_data::Bool=false, path::Union{Nothing, String}=nothing)
+function train_BAE!(X::AbstractMatrix{<:AbstractFloat}, BAE::BoostingAutoencoder; soft_clustering::Bool=false, MD::Union{Nothing, MetaData}=nothing, save_data::Bool=false, path::Union{Nothing, String}=nothing, batchseed::Int=42)
+
+    Random.seed!(batchseed)
 
     X = Float32.(X)
     Xt = X'
@@ -151,7 +153,9 @@ function train_BAE!(X::AbstractMatrix{<:AbstractFloat}, BAE::BoostingAutoencoder
 end
 
 #---training function for a BAE with the disentanglement constraint. Additionally monitors the performance on a held out test set:
-function train_BAE_traintest!(X_train::AbstractMatrix{<:AbstractFloat}, X_test::AbstractMatrix{<:AbstractFloat}, BAE::BoostingAutoencoder; soft_clustering::Bool=false, MD::Union{Nothing, MetaData}=nothing, save_data::Bool=false, path::Union{Nothing, String}=nothing)
+function train_BAE_traintest!(X_train::AbstractMatrix{<:AbstractFloat}, X_test::AbstractMatrix{<:AbstractFloat}, BAE::BoostingAutoencoder; soft_clustering::Bool=false, MD::Union{Nothing, MetaData}=nothing, save_data::Bool=false, path::Union{Nothing, String}=nothing, batchseed::Int=42)
+
+    Random.seed!(batchseed)
 
     X_train = Float32.(X_train)
     X_test = Float32.(X_test)
