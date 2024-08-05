@@ -26,7 +26,7 @@ export
     # BAE model architecture:
     Hyperparameter, MetaData, BoostingAutoencoder, generate_BAEdecoder,
     # BAE model optimization functions:
-    calcunibeta, compL2Boost!, disentangled_compL2Boost!, train_BAE!, train_BAE_traintest!,
+    calcunibeta, compL2Boost!, disentangled_compL2Boost!, train_BAE!, 
     # plotting functions:
     vegaheatmap, vegascatterplot, create_colored_vegascatterplots, TopFeaturesPerCluster_scatterplot, normalizedFeatures_scatterplot, FeaturePlots,
     # data simulation functions:
