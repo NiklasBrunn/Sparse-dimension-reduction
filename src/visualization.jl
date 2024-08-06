@@ -284,7 +284,7 @@ function TopFeaturesPerCluster_scatterplot(df::DataFrame, key::String;
     selected_labels = df.Features
 
     # Normalize by the maximum absolute value
-    normalized_values = values / maximum(values)
+    normalized_values = (values .- minimum(values)) ./ (maximum(values) - minimum(values)) #values / maximum(values)
     
     # Select the top_n values and their corresponding labels
     top_values = normalized_values[1:top_n]
