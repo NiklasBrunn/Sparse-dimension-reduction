@@ -28,11 +28,11 @@ export
     # BAE model optimization functions:
     calcunibeta, compL2Boost!, disentangled_compL2Boost!, train_BAE!, 
     # plotting functions:
-    vegaheatmap, vegascatterplot, create_colored_vegascatterplots, TopFeaturesPerCluster_scatterplot, normalizedFeatures_scatterplot, FeaturePlots,
+    vegaheatmap, vegascatterplot, create_colored_vegascatterplots, TopFeaturesPerCluster_scatterplot, normalizedFeatures_scatterplot, FeaturePlots, track_coefficients, plot_row_boxplots,
     # data simulation functions:
     addstages!, sim_scRNAseqData,
     # utility functions:
-    scale, get_latentRepresentation, generate_umap, find_zero_columns, split_vectors, slit_softmax, topFeatures_per_Cluster, hsl_to_hex
+    scale, NaNstoZeros!, Normalize, MinMaxNormalize, log1p, log1pNormalize, filter_observations, filter_features, filter_cells_by_mitochondrial_content, get_latentRepresentation, generate_umap, find_zero_columns, split_vectors, slit_softmax, topFeatures_per_Cluster, hsl_to_hex
 #
 
 end

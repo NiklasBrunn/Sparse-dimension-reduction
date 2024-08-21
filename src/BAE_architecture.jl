@@ -1,6 +1,7 @@
-#--Hyperparameter:
+#---Hyperparameter:
 mutable struct Hyperparameter
     zdim::Int
+    n_restarts::Int
     epochs::Int
     batchsize::Int
     η::Float32
@@ -9,11 +10,12 @@ mutable struct Hyperparameter
     M::Int
 
     # Constructor with default values
-    function Hyperparameter(; zdim::Int=10, epochs::Int=50, batchsize::Int=2^9, η::Float32=0.01f0, λ::Float32=0.1f0, ϵ::Float32=0.001f0, M::Int=1)
-        new(zdim, epochs, batchsize, η, λ, ϵ, M)
+    function Hyperparameter(; zdim::Int=10, n_restarts::Int=1, epochs::Int=50, batchsize::Int=2^9, η::Float32=0.01f0, λ::Float32=0.1f0, ϵ::Float32=0.001f0, M::Int=1)
+        new(zdim, n_restarts, epochs, batchsize, η, λ, ϵ, M)
     end 
 end
 
+#---MetaData:
 mutable struct MetaData
     obs_df::DataFrame
     featurename::Union{Nothing, Vector{String}}
@@ -46,6 +48,7 @@ function Base.summary(BAE::BoostingAutoencoder)
     HP = BAE.HP
     println("Initial hyperparameter for constructing and training a BAE:
      latent dimensions: $(HP.zdim),
+     number of encoder re-starts: $(HP.n_restarts),
      training epochs: $(HP.epochs),
      batchsize: $(HP.batchsize),
      learning rate for decoder parameter: $(HP.η),

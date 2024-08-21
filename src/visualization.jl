@@ -1,4 +1,5 @@
-#---functions for generating visualizations of the results and data:
+#---Functions for result visualization:
+
 function vegaheatmap(Z::AbstractMatrix; 
     path::String=joinpath(@__DIR__, "../") * "heatmap.pdf", 
     Title::String=" ",
@@ -389,24 +390,88 @@ function FeaturePlots(dict::Dict, featurenames::AbstractVector{String}, X::Abstr
 
     for ldim in 1:length(dict)
 
-        figurespath_ldim = path * "/TopFeaturesCluster_$(ldim)"
-        if !isdir(figurespath_ldim)
-            # Create the folder if it does not exist
-            mkdir(figurespath_ldim)
-        end
+        k = minimum([top_n, length(dict["$(ldim)"].Features)])
 
-        sel_features = dict["$(ldim)"].Features[1:top_n];
-        for feature in 1:top_n
-            featurename = sel_features[feature]
-            sel_ind = findall(x->x==featurename, featurenames);
-            vegascatterplot(embedding, vec(X[:, sel_ind]); 
-                            path=figurespath_ldim * "/Topgene_$(feature)_"* featurename *"_Topic_$(ldim)"*fig_type,
-                            Title=Title="Top feature $(feature): " * featurename, Width=Width, Height=Height,
-                            legend_title=legend_title, color_field=color_field,
-                            scheme=scheme, domain_mid=domain_mid, range=range, save_plot=true,
-                            marker_size=marker_size
-            )
+        if k > 0
+
+            figurespath_ldim = path * "/TopFeaturesCluster_$(ldim)"
+            if !isdir(figurespath_ldim)
+                # Create the folder if it does not exist
+                mkdir(figurespath_ldim)
+            end
+
+            sel_features = dict["$(ldim)"].Features[1:k]; #top_n
+            for feature in 1:k  #top_n
+                featurename = sel_features[feature]
+                sel_ind = findall(x->x==featurename, featurenames);
+                vegascatterplot(embedding, vec(X[:, sel_ind]); 
+                                path=figurespath_ldim * "/Topgene_$(feature)_"* featurename *"_Topic_$(ldim)"*fig_type,
+                                Title=Title="Top feature $(feature): " * featurename, Width=Width, Height=Height,
+                                legend_title=legend_title, color_field=color_field,
+                                scheme=scheme, domain_mid=domain_mid, range=range, save_plot=true,
+                                marker_size=marker_size
+                )
+            end
+            
         end
 
     end
+end
+
+function track_coefficients(coefficients, dim; iters::Union{Int, Nothing}=nothing, xscale::Symbol=:log10)
+    # Number of iterations and number of coefficients
+    num_iterations = length(coefficients)
+    num_coefficients = size(coefficients[1], 1)
+
+    # Preallocate the coefficient matrix
+    coeffs = zeros(Float32, num_coefficients, num_iterations)
+
+    # Populate the coefficient matrix
+    for iter in 1:num_iterations
+        coeffs[:, iter] = coefficients[iter][:, dim]
+    end
+
+    # Handle the number of iterations to plot
+    if typeof(iters) == Int && iters > num_iterations
+        @warn "Number of iterations to plot is greater than the number of iterations in the data. Plotting all iterations."
+        iters = num_iterations
+    elseif isnothing(iters)
+        iters = num_iterations
+    end
+
+    # Prepare data for plotting
+    x = 1:iters
+    y = coeffs[:, 1:iters]
+
+    # Create the plot
+    x_scale = string(xscale)
+    pl = plot(x, y', xlabel="Iteration " * x_scale, ylabel="Coefficient Value", title="Evolution of Coefficients Across Training Epochs", lw=2, legend=false, xscale=xscale)
+
+    return pl
+end
+
+function plot_row_boxplots(Z; legend=false, xlabel="Row Index", ylabel="Value", palette=:tab20, saveplot=false, path=nothing)
+
+    d, n = size(Z)
+    
+    # Create a vector to hold the positions for the boxplots
+    positions = repeat(1:d, inner=n)
+    
+    # Create a vector to hold the values for the boxplots
+    values = vec(Z')
+    
+    # Create a vector to hold the groupings (row index for each value)
+    groupings = repeat(1:d, inner=n)
+    
+    # Create a DataFrame for plotting
+    df = DataFrame(Row=positions, Value=values, Group=groupings)
+    
+    # Plot the boxplots with different colors
+    b_plot = boxplot(df.Row, df.Value, group=df.Group, legend=legend, xlabel=xlabel, ylabel=ylabel, xticks=1:d, palette=palette)
+
+    if saveplot
+        savefig(b_plot, path)
+    end
+    
+    display(b_plot)
 end
