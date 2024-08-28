@@ -24,7 +24,7 @@ library(ggplot2)
 
 ## Load Data (takes a couple of minutes ...):
 ```{r message=F, warning=F}
-options(timeout = max(1200, getOption("timeout"))) #set download time limit to 12 minutes ...
+options(timeout = max(600, getOption("timeout"))) #set download time limit to 12 minutes ...
 url <- "https://zenodo.org/record/6846618/files/raredon_2019_rat.Robj"
 temp_file <- tempfile(fileext = ".Robj")
 download.file(url, destfile = temp_file, mode = "wb")
@@ -59,7 +59,7 @@ cc.object <- lung.cc$CellToCell #Extract the output of interest
 ```{r message=F, warning=F}
 cur_wd <- getwd()
 parent_dir <- dirname(cur_wd)
-print(paste0(parent_dir, "/Rat_NICHES_CellToCell.rds"))
+
 saveRDS(rat.sub, file = paste0(parent_dir, "/Rat_Seurat_sub.rds"))
 saveRDS(cc.object, file = paste0(parent_dir, "/Rat_NICHES_CellToCell.rds"))
 ```

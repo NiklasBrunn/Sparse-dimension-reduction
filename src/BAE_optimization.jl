@@ -1,26 +1,45 @@
 #---Componentwise boosting functions:
 
+function get_unibeta(X::AbstractMatrix{T}, y::AbstractVector{T}, denom::AbstractVector{T}, n::Int, p::Int) where T
+
+    unibeta = zeros(eltype(X), p)
+
+    for j = 1:p
+        for i = 1:n
+            unibeta[j] += X[i, j] * y[i]
+        end
+
+        unibeta[j] /= denom[j] #n - 1
+    end
+
+    return unibeta
+end
+
 function compL2Boost!(BAE::BoostingAutoencoder, l::Int, X::AbstractMatrix{T}, y::AbstractVector{T}, denom::AbstractVector{T}) where T
     #determine the number of observations and the number of features in the training data:
-    p = size(X, 2)
+    #p = size(X, 2)
+    n, p = size(X)
 
     β = BAE.coeffs[:, l]
 
+    update_inds = findall(x->x!=0, β)
+
     for step in 1:BAE.HP.M
 
-        nz_inds = findall(x->x!=0, β)
+        #nz_inds = findall(x->x!=0, β)
 
         #compute the residual as the difference of the target vector and the current fit:
         res = y .- (X * β)
 
         #determine the p unique univariate OLLS estimators for fitting the residual vector res:
-        unibeta = [dot(X[:, j], res) / denom[j] for j in 1:p]
+        unibeta = get_unibeta(X, res, denom, n, p) # Currently the faster option
+        #unibeta = [dot(X[:, j], res) / denom[j] for j in 1:p] 
 
         #determine the optimal index of the univariate estimators resulting in the currently optimal fit:
         optindex = findmax(unibeta.^2 .* denom)[2]
 
         #update β by adding a re-scaled version of the selected OLLS-estimator, by a scalar value ϵ ∈ (0,1):
-        update_inds = union(nz_inds, optindex)
+        update_inds = union(update_inds, optindex)
         BAE.coeffs[update_inds, l] .+= unibeta[update_inds] .* BAE.HP.ϵ  
 
     end
@@ -51,7 +70,9 @@ function disentangled_compL2Boost!(BAE::BoostingAutoencoder, batch::AbstractMatr
             curtarget = Y[l, :]
             
             # Solve the least squares problem using Cholesky decomposition
-            XtX = curdata' * curdata
+            m = size(curdata, 2)
+            Λ = convert(eltype(batch), 1.0e-6) .* Matrix(I, m, m) # Regularization term that prevents singular matrices (rarely happens)
+            XtX = curdata' * curdata .+ Λ
             XtY = curdata' * curtarget
             
             # Use Cholesky decomposition to solve the linear system XtX * curestimate = XtY
@@ -73,9 +94,15 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
 
     Random.seed!(batchseed)
 
-    if eltype(X) != Float32
+    object_type = eltype(X)
+
+    if object_type != Float32
         @warn "The input data matrix is not of type Float32. This might lead to a slower training process."
     end
+
+    BAE.HP.ϵ = convert(object_type, BAE.HP.ϵ)
+    BAE.HP.η = convert(object_type, BAE.HP.η)
+    BAE.HP.λ = convert(object_type, BAE.HP.λ)
 
     Xt = X'
     n = size(X, 1)
@@ -124,7 +151,7 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
             push!(mean_trainlossPerEpoch, mean(batchLosses))
             push!(sparsity_level, 1 - (count(x->x!=0, BAE.coeffs) / length(BAE.coeffs))) # Percentage of zero elements in the encoder weight matrix (higher values are better)
             Z = get_latentRepresentation(BAE, Xt)
-            push!(entanglement_score, sum(UpperTriangular(abs.(cor(Z, dims=2)))) - convert(eltype(X), BAE.HP.zdim)) # Offdiagonal of the Pearson correlation coefficient (upper triangular) matrix between the latent dimensions (closer to 0 is better)
+            push!(entanglement_score, sum(UpperTriangular(abs.(cor(Z, dims=2)))) - convert(object_type, BAE.HP.zdim)) # Offdiagonal of the Pearson correlation coefficient (upper triangular) matrix between the latent dimensions (closer to 0 is better)
             Z_cluster = softmax(split_vectors(Z))
             push!(clustering_score, n - sum([maximum(Z_cluster[:, i]) for i in 1:n])) # Sum of deviations of the maximum cluster probability value per cell from 1 (closer to 0 is better)
 
@@ -145,7 +172,7 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
 
         if iter < BAE.HP.n_restarts
             @info "Re-initialize encoder weights as zeros ..."
-            BAE.coeffs = zeros(eltype(BAE.coeffs), size(BAE.coeffs))
+            BAE.coeffs = zeros(object_type, size(BAE.coeffs))
         end
 
     end
