@@ -90,7 +90,7 @@ function disentangled_compL2Boost!(BAE::BoostingAutoencoder, batch::AbstractMatr
 end
 
 #---training function for a BAE with the disentanglement constraint:
-function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{Nothing, MetaData}=nothing, track_coeffs::Bool=false, save_data::Bool=false, path::Union{Nothing, String}=nothing, batchseed::Int=42) where T
+function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{Nothing, MetaData}=nothing, track_coeffs::Bool=false, save_data::Bool=false, data_path::Union{Nothing, String}=nothing, batchseed::Int=42) where T
 
     Random.seed!(batchseed)
 
@@ -98,6 +98,15 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
 
     if object_type != Float32
         @warn "The input data matrix is not of type Float32. This might lead to a slower training process."
+    end
+
+    if save_data
+        if isnothing(data_path) || !isdir(data_path)
+            @error "Please provide a valid path to save the training data."
+        else
+            mkdir(data_path * "BAE_results_data")
+            data_path = data_path * "BAE_results_data/"
+        end
     end
 
     BAE.HP.ϵ = convert(object_type, BAE.HP.ϵ)
@@ -156,15 +165,15 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
             push!(clustering_score, n - sum([maximum(Z_cluster[:, i]) for i in 1:n])) # Sum of deviations of the maximum cluster probability value per cell from 1 (closer to 0 is better)
 
             if save_data #&& epoch % 10 == 0
-                file_path = path * "/BAE_coeffs.txt"
+                file_path = data_path * "/BAE_coeffs.txt"
                 writedlm(file_path, BAE.coeffs)
-                file_path = path * "/Trainloss_BAE.txt"
+                file_path = data_path * "/Trainloss_BAE.txt"
                 writedlm(file_path, mean_trainlossPerEpoch)
-                file_path = path * "/Sparsity_BAE.txt"
+                file_path = data_path * "/Sparsity_BAE.txt"
                 writedlm(file_path, sparsity_level)
-                file_path = path * "/Entanglement_BAE.txt"
+                file_path = data_path * "/Entanglement_BAE.txt"
                 writedlm(file_path, entanglement_score)
-                file_path = path * "/ClusteringScore_BAE.txt"
+                file_path = data_path * "/ClusteringScore_BAE.txt"
                 writedlm(file_path, clustering_score)
             end
 
@@ -192,7 +201,7 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
     MD.obs_df[!, :Silhouettes] = silhouettes
 
     if isnothing(MD.Top_features)
-        MD.Top_features = topFeatures_per_Cluster(BAE, MD; save_data=save_data, path=path)
+        MD.Top_features = topFeatures_per_Cluster(BAE, MD; save_data=save_data, data_path=data_path)
     end
 
 

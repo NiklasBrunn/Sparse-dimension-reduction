@@ -208,7 +208,7 @@ end
     return Z
 end
 
-function topFeatures_per_Cluster(BAE::BoostingAutoencoder, MD::MetaData; save_data::Bool=true, path::Union{Nothing, String}=nothing)
+function topFeatures_per_Cluster(BAE::BoostingAutoencoder, MD::MetaData; save_data::Bool=true, data_path::Union{Nothing, String}=nothing)
 
     TopFeatures_Cluster = Dict{String, DataFrame}();
     counter_var = 1;
@@ -248,14 +248,14 @@ function topFeatures_per_Cluster(BAE::BoostingAutoencoder, MD::MetaData; save_da
         counter_var+=1
     end
 
-    if save_data && !isnothing(path) 
-        if !isdir(path * "/TopFeaturesCluster_CSV")
+    if save_data && !isnothing(data_path) 
+        if !isdir(data_path * "/TopFeaturesCluster_CSV")
             # Create the folder if it does not exist
-            mkdir(path * "/TopFeaturesCluster_CSV")
+            mkdir(data_path * "/TopFeaturesCluster_CSV")
         end
 
         for (key, df) in TopFeatures_Cluster
-            filepath = joinpath(path * "/TopFeaturesCluster_CSV/", "topFeatures_Cluster_" * key * ".csv")
+            filepath = joinpath(data_path * "/TopFeaturesCluster_CSV/", "topFeatures_Cluster_" * key * ".csv")
             CSV.write(filepath, df)
         end
     end
@@ -263,13 +263,13 @@ function topFeatures_per_Cluster(BAE::BoostingAutoencoder, MD::MetaData; save_da
     return TopFeatures_Cluster
 end
 
-function get_important_genes(BAE::BoostingAutoencoder, MD::MetaData; save_data::Bool=false, path::Union{String, Nothing}=figurespath)
+function get_important_genes(BAE::BoostingAutoencoder, MD::MetaData; save_data::Bool=false, data_path::Union{String, Nothing}=nothing)
 
     important_genes_inds = findall(x->x!=convert(eltype(BAE.coeffs), 0), vec(sum(abs.(BAE.coeffs), dims=2)))
     important_genes = MD.featurename[important_genes_inds]
 
     if save_data
-        writedlm(path * "important_genes.txt", important_genes)
+        writedlm(data_path * "important_genes.txt", important_genes)
     end
     
     return important_genes
