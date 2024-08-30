@@ -349,19 +349,15 @@ function load_rat_scRNAseq_data(;
                 mkdir(data_path)
             end
 
-            println("Loading the subsetted rat lung data (~ 1.6 GB) this takes a few minutes ... .")
-            println("The data will be saved to: $(data_path)")
-
-        else 
-            println("Loading the subsetted rat lung data (~ 1.6 GB) this takes a few minutes ... .")
-            println("The data will be saved to: $(data_path)")
-
         end
 
         file_path = data_path * "Rat_Seurat_sub.rds"
         if isfile(file_path)
             @warn "The file already exists. Skipping the download ..."
             download_data = false
+        else
+            println("Loading the subsetted rat lung data (~ 1.6 GB) this takes a few minutes ... .")
+            println("The data will be saved to: $(data_path)")
         end
 
     else
@@ -373,19 +369,15 @@ function load_rat_scRNAseq_data(;
                 mkdir(data_path)
             end
 
-            println("Loading the rat lung data (~ 2.7 GB) this takes a few minutes ... .")
-            println("The data will be saved to: $(data_path)")
-
-        else 
-            println("Loading the rat lung data (~ 2.7 GB) this takes a few minutes ... .")
-            println("The data will be saved to: $(data_path)")
-
         end
 
         file_path = data_path * "Rat_Seurat.rds"
         if isfile(file_path)
             @warn "The file already exists. Skipping the download ..."
             download_data = false
+        else
+            println("Loading the rat lung data (~ 2.7 GB) this takes a few minutes ... .")
+            println("The data will be saved to: $(data_path)")
         end
     end
 
@@ -583,7 +575,8 @@ function create_seurat_object(X::AbstractMatrix{T}, MD::MetaData;
     assay::Union{String, Nothing}= "RNA",
     normalize_data::Bool=true, 
     alra_imputation::Bool=false,
-    indents::Union{String, Nothing}=nothing
+    indents::Union{String, Nothing}=nothing,
+    data_is_normalized::Bool=true
     ) where T
 
     #---Check if the data path exists:
@@ -632,6 +625,7 @@ function create_seurat_object(X::AbstractMatrix{T}, MD::MetaData;
     @rput set_indents
     @rput indents
     @rput assay
+    @rput data_is_normalized
 
     # Create a Seurat object:
     R"""
@@ -645,6 +639,124 @@ function create_seurat_object(X::AbstractMatrix{T}, MD::MetaData;
     R"""
     if (set_indents) {
         Idents(seurat_obj) <- seurat_obj@meta.data[[indents]]
+    }
+    """
+
+    R"""
+    if (data_is_normalized) {
+        LayerData(seurat_obj, assay = assay, layer = "data") <- LayerData(seurat_obj, assay = assay, layer = "counts")
+    }
+    """
+
+    R"""
+    #---Normalize the data:
+    if (normalize_data) {
+        print("Normalizing data ...")
+        seurat_obj <- NormalizeData(seurat_obj)
+    }
+    """
+
+    #---Impute the data:
+    R"""
+    if (alra_imputation) {
+        print("Performing ALRA imputation ...")
+        seurat_obj <- SeuratWrappers::RunALRA(seurat_obj, verbose = F)
+    }
+    """
+    
+    # Saving the Seurat object:
+    R"""
+    saveRDS(seurat_obj, file = paste0(data_path, "Seurat_object.rds"))
+    """
+
+    # Remove all objects from the R workspace:
+    R"""
+    rm(list=ls())
+    gc()
+    """
+end
+
+function create_seurat_object(df::DataFrame, MD::MetaData; 
+    data_path::Union{String, Nothing}=nothing, 
+    file_name::Union{String, Nothing}=nothing,
+    assay::Union{String, Nothing}= "RNA",
+    normalize_data::Bool=true, 
+    alra_imputation::Bool=false,
+    indents::Union{String, Nothing}=nothing,
+    data_is_normalized::Bool=true
+    ) where T
+
+    X = Matrix(df[:, 2:end]')
+    cell_ids = df[:, 1]
+
+    #---Check if the data path exists:
+    if isnothing(data_path)
+
+        projectpath = joinpath(@__DIR__, "../")
+        data_path = projectpath * "data/tutorial/"
+        if !isdir(data_path)
+            mkdir(data_path)
+            @info "No data path was provided. Creating a directory: $(data_path)"
+        end
+
+        @info "No data path was provided. Setting directory to: $(data_path)"
+    end
+
+    if isnothing(file_name)
+
+        file_name = data_path * "Seurat_object.rds"
+
+        @info "No file name was provided. Setting the file name to: Seurat_object.rds"
+    end
+
+    set_indents = false
+    if !isnothing(indents) && indents in names(MD.obs_df)
+        set_indents = true
+    elseif !isnothing(indents)
+        @error "The provided indent column does not exist in the metadata. Please choose an existing column."
+    end
+
+    if isnothing(assay)
+        assay = "RNA"
+        @info "No assay provided. Setting assay to RNA."
+    end
+
+    genenames = MD.featurename
+    metadata = MD.obs_df
+
+    R"library(Seurat)"
+
+    @rput data_path
+    @rput X
+    @rput genenames
+    @rput normalize_data
+    @rput alra_imputation
+    @rput metadata
+    @rput set_indents
+    @rput indents
+    @rput assay
+    @rput data_is_normalized
+    @rput cell_ids
+
+    # Create a Seurat object:
+    R"""
+    colnames(X) <- cell_ids
+    seurat_obj <- CreateSeuratObject(counts = X, assay = assay)
+    rownames(seurat_obj) <- genenames
+
+    rownames(metadata) <- colnames(seurat_obj)
+    seurat_obj <- AddMetaData(object = seurat_obj, metadata = metadata)
+    """
+
+    R"""
+    if (set_indents) {
+        Idents(seurat_obj) <- seurat_obj@meta.data[[indents]]
+    }
+    """
+
+    R"""
+    if (data_is_normalized) {
+        LayerData(seurat_obj, assay = assay, layer = "data") <- LayerData(seurat_obj, assay = assay, layer = "counts")
     }
     """
 
