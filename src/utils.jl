@@ -330,7 +330,7 @@ function load_rat_scRNAseq_data(;
     data_path::Union{String, Nothing}=nothing, 
     subset_data::Bool=true, 
     transfer_data::Bool=false, 
-    data_layer::Union{String, Nothing}="RNA"
+    assay::Union{String, Nothing}="RNA"
     )
 
     if !isnothing(data_path) && !isdir(data_path)
@@ -442,39 +442,45 @@ function load_rat_scRNAseq_data(;
         seurat_obj <- readRDS(file_path)
 
         celltype <- Idents(seurat_obj)
+
         genename <- rownames(seurat_obj)
+
         X <- matrix(nrow = 0, ncol = 0)
+
+        embedding <- Embeddings(seurat_obj, "tsne")
         """
 
-        if isnothing(data_layer)
-            data_layer = "RNA"
+        if isnothing(assay)
+            assay = "RNA"
 
-            @rput data_layer
+            @rput assay
 
             R"""
-            X <- as.matrix(GetAssayData(object = seurat_obj, assay = "RNA", slot = "counts"))
+            X <- as.matrix(GetAssayData(object = seurat_obj, assay = assay, slot = "counts"))
             """
-        elseif data_layer == "alra"
-            @rput data_layer
+        elseif assay == "alra"
+            @rput assay
 
             R"""
-            X <- as.matrix(GetAssayData(object = seurat_obj, assay = data_layer, slot = "data"))
+            X <- as.matrix(GetAssayData(object = seurat_obj, assay = assay, slot = "data"))
             """
-        elseif data_layer == "RNA"
-            @rput data_layer
+        elseif assay == "RNA"
+            @rput assay
 
             R"""
-            X <- as.matrix(GetAssayData(object = seurat_obj, assay = data_layer, slot = "counts"))
+            X <- as.matrix(GetAssayData(object = seurat_obj, assay = assay, slot = "counts"))
             """
         else
             error("The data layer is not supported. Please provide a valid data layer.")
         end
 
         @rget X
+        @rget embedding
         @rget celltype
         @rget genename
 
         X = Matrix{Float32}(X')
+        embedding = Matrix{Float32}(embedding)
         celltype = String.(celltype)
         genename = String.(genename)
 
@@ -485,7 +491,7 @@ function load_rat_scRNAseq_data(;
 
         println("Data transfer completed.")
 
-        return X, celltype, genename
+        return X, embedding, celltype, genename
     end
 
 end
