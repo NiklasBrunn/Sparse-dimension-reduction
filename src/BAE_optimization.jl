@@ -152,31 +152,54 @@ end
 
 #---training function for a BAE with the disentanglement constraint:
 """
-    train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{Nothing, MetaData}=nothing, track_coeffs::Bool=false, save_data::Bool=false, data_path::Union{Nothing, String}=nothing, batchseed::Int=42) where T
+    train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; 
+              MD::Union{Nothing, MetaData}=nothing, 
+              track_coeffs::Bool=false, 
+              save_data::Bool=false, 
+              data_path::Union{Nothing, String}=nothing, 
+              batchseed::Int=42) where T
 
-Train a Boosting Autoencoder (BAE) model using the given input data matrix `X` and hyperparameters stored as part of the BAE structure. 
-The hyperparameters for training can be adapted in the definition of the `BAE.HP` field  of the BAE structure. 
-The hyperparameters for training a BAE model are: The number of latent dimensions `BAE.HP.zdim`, the number of restarts `BAE.HP.n_restarts`,  the number of training epochs `BAE.HP.epochs`, 
-the batch size of the mini-batches used for computing the parameter updates `BAE.HP.batchsize`, the learning rate for the decoder optimizer `BAE.HP.η`, the regularization parameter for decoder updates `BAE.HP.λ`, 
-the step width for the boosting component `BAE.HP.ϵ`, the number of boosting steps per training iteration `BAE.HP.M`.
-The training process is performed for `BAE.HP.epochs` epochs, with a batch size of `BAE.HP.batchsize`. 
-If `BAE.HP.n_restarts` > 1, the training process is repeated `BAE.HP.n_restarts` times, each time starting with a zero initialization of the encoder weights, training for `BAE.HP.epochs` epochs. 
-The training process is optimized using the AdamW optimizer. 
-The training process is tracked by the mean batch loss per epoch, the entanglement score per epoch, the sparsity level per epoch, and the clustering score (silhouette score of the clustering) per epoch. 
-Optionally, the coefficient updates can be tracked during training iterations. 
-The training data can be saved at each epoch.
+Train a Boosting Autoencoder (BAE) on the given data matrix.
 
 # Arguments
-- `X::AbstractMatrix{T}`: The input data matrix of type `T`.Rows correspond to the observational units (e.g. cell pairs or cells) and columns to the features (e.g. interactions or genes). For optimizing training speed, the input data matrix should be of type `Float32`.
-- `BAE::BoostingAutoencoder`: The BoostingAutoencoder model to train, including hyperparameters.
-- `MD::Union{Nothing, MetaData}=nothing`: Optional metadata for the training process, including the featurenames.
-- `track_coeffs::Bool=false`: Whether to track the coefficient updates during training iterations.
-- `save_data::Bool=false`: Whether to save data. The data that is saved during training consists of the encoder weights, the mean batch loss per epoch, the entanglement score per epoch, the sparsity level per epoch and the clustering score per epoch.  If `true`, the data will be saved in the provided `data_path` at each epoch. In addition, selected features per cluster are stored as .csv files. This increases the memory usage!
-- `data_path::Union{Nothing, String}=nothing`: The path to save the data.
-- `batchseed::Int=42`: A seed for random number generation.
+- `X::AbstractMatrix{T}`: The input data matrix, where each row corresponds to an observation, e.g., a cell pair or a cell and each column corresponds to a feature, e.g., a ligand-receptor interaction or a gene.
+- `BAE::BoostingAutoencoder`: The BAE model to be trained, including hyperparameters for training. For more details about the model architecture or the training hyperparameters and default values see the documentation of `BoostingAutoencoder` and `Hyperparameters`.
+- `MD::Union{Nothing, MetaData}=nothing`: Optional metadata object containing extra information about the dataset, such as the feature names and observation labels. If provided, this object will be updated with clustering results and other metrics.
+- `track_coeffs::Bool=false`: If `true`, the coefficient updates of the BAE will be tracked and saved after each iteration.
+- `save_data::Bool=false`: If `true`, data at each epoch and results will be saved to the specified `data_path`. The data that is saved during training consists of the encoder weights, the mean batch loss per epoch, the entanglement score per epoch, the sparsity level per epoch and the clustering score per epoch.
+- `data_path::Union{Nothing, String}=nothing`: Path to the directory where training data and results will be saved. This parameter is required if `save_data` is `true`.
+- `batchseed::Int=42`: Seed for random number generation to ensure reproducibility of batch selection during training.
+
+# Description
+This function trains a Boosting Autoencoder (BAE) on the input data matrix `X` by integrating an iterative componentwise L2-boosting approach into the gradient-based optimization scheme for autoencoders. The training process can involve multiple restarts, where each restart reinitializes the encoder weights as zeros while maintaining the decoder parameters. Each zero-initialization is followed by a series of epochs in which the model is updated iteratively using mini-batches. The training process can be customized with options to save the training progress, track the evolution of the coefficients, and store results in a specified directory.
+
+The training process includes:
+1. Seeding the random number generator for reproducibility.
+2. Validating the data type of the input matrix and issuing warnings if the type is not `Float32`.
+3. Optionally saving the training data and results to a specified directory.
+4. Setting up the optimizer and initializing tracking variables for loss, sparsity, entanglement, clustering, and coefficients.
+5. Iteratively updating the BAE's coefficients using the disentangled componentwise L2-boosting approach.
+6. After all epochs, computing the latent representation, clustering results, and silhouette scores, and updating the metadata object (`MD`) with these results.
+
+# Side Effects
+- Updates the `BAE` object in-place with the learned coefficients and latent representations.
+- Optionally saves training data, loss, sparsity, entanglement, and clustering scores to the specified `data_path`.
+- Updates the `MD` object with clustering and feature selection results.
 
 # Returns
-- `output_dict::Dict{String, Union{Vector{eltype(X)}, Vector{Any}}}`: A dictionary containing the training results.
+- `output_dict::Dict{String, Union{Vector{eltype(X)}, Vector{Any}}}`: A dictionary containing training metrics such as:
+  - `"trainloss"`: Mean training loss per epoch.
+  - `"sparsity"`: Sparsity levels of the encoder weights after each epoch.
+  - `"entanglement"`: Entanglement scores of the latent representations.
+  - `"clustering"`: Clustering scores based on the softmax-transformed latent representations.
+  - `"silhouettes"`: Silhouette scores of the clustering results.
+  - `"coefficients"`: A 3D array where the encoder weights/coefficients are stored during training per update iteration if `track_coeffs` is `true`.
+
+# Notes
+- The function assumes the presence of a `MetaData` object `MD` if detailed tracking and analysis are required post-training.
+-The hyperparameters for training can be adapted by adapting the `BAE.HP` field of the BAE structure.
+- The `save_data` option must be accompanied by a valid `data_path`. If the directory does not exist, it will be created.
+- The function makes use of Flux for the ADAMW optimizer and gradient computation.
 """
 function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{Nothing, MetaData}=nothing, track_coeffs::Bool=false, save_data::Bool=false, data_path::Union{Nothing, String}=nothing, batchseed::Int=42) where T
 
@@ -186,6 +209,10 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
 
     if object_type != Float32
         @warn "The input data matrix is not of type Float32. This might lead to a slower training process."
+    end
+
+    if isnothing(MD)
+        @warn "No metadata object provided. Clustering results and feature selection will not be stored."
     end
 
     if save_data
@@ -282,15 +309,17 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
 
     # Compute the cluster probabilities for each cell:
     BAE.Z_cluster = softmax(split_vectors(BAE.Z))
-    MD.obs_df[!, :Cluster] = [argmax(BAE.Z_cluster[:, i]) for i in 1:size(BAE.Z_cluster, 2)]
 
     # Compute average Silhouette score of the soft clustering results:
     dist_mat = pairwise(Euclidean(), BAE.Z, dims=2);
     silhouettes = Clustering.silhouettes(MD.obs_df.Cluster, dist_mat)
-    MD.obs_df[!, :Silhouettes] = silhouettes
 
-    if isnothing(MD.Top_features)
-        MD.Top_features = topFeatures_per_Cluster(BAE, MD; save_data=save_data, data_path=data_path)
+    if !isnothing(MD)
+        MD.obs_df[!, :Silhouettes] = silhouettes
+        MD.obs_df[!, :Cluster] = [argmax(BAE.Z_cluster[:, i]) for i in 1:size(BAE.Z_cluster, 2)]
+        if isnothing(MD.Top_features)
+            MD.Top_features = topFeatures_per_Cluster(BAE, MD; save_data=save_data, data_path=data_path)
+        end
     end
 
 
