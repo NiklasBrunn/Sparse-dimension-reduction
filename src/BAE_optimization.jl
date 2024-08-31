@@ -309,14 +309,15 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
 
     # Compute the cluster probabilities for each cell:
     BAE.Z_cluster = softmax(split_vectors(BAE.Z))
+    cluster_labels = [argmax(BAE.Z_cluster[:, i]) for i in 1:size(BAE.Z_cluster, 2)]
 
     # Compute average Silhouette score of the soft clustering results:
     dist_mat = pairwise(Euclidean(), BAE.Z, dims=2);
-    silhouettes = Clustering.silhouettes(MD.obs_df.Cluster, dist_mat)
+    silhouettes = Clustering.silhouettes(cluster_labels, dist_mat)
 
     if !isnothing(MD)
+        MD.obs_df[!, :Cluster] = cluster_labels
         MD.obs_df[!, :Silhouettes] = silhouettes
-        MD.obs_df[!, :Cluster] = [argmax(BAE.Z_cluster[:, i]) for i in 1:size(BAE.Z_cluster, 2)]
         if isnothing(MD.Top_features)
             MD.Top_features = topFeatures_per_Cluster(BAE, MD; save_data=save_data, data_path=data_path)
         end
