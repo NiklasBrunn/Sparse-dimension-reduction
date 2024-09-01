@@ -690,7 +690,7 @@ function create_seurat_object(df::DataFrame, MD::MetaData;
     alra_imputation::Bool=false,
     indents::Union{String, Nothing}=nothing,
     data_is_normalized::Bool=true
-    ) where T
+    ) 
 
     X = Matrix(df[:, 2:end]')
     cell_ids = df[:, 1]
