@@ -171,23 +171,23 @@ Train a Boosting Autoencoder (BAE) on the given data matrix.
 - `batchseed::Int=42`: Seed for random number generation to ensure reproducibility of batch selection during training.
 
 # Description
-This function trains a Boosting Autoencoder (BAE) on the input data matrix `X` by integrating an iterative componentwise L2-boosting approach into the gradient-based optimization scheme for autoencoders. The training process can involve multiple restarts, where each restart reinitializes the encoder weights as zeros while maintaining the decoder parameters. Each zero-initialization is followed by a series of epochs in which the model is updated iteratively using mini-batches. The training process can be customized with options to save the training progress, track the evolution of the coefficients, and store results in a specified directory.
+This function trains a Boosting Autoencoder (BAE) on the input data matrix `X` by integrating an iterative componentwise L2-boosting approach into the gradient-based optimization scheme for autoencoders. The training process can involve multiple restarts, where each restart reinitializes the encoder weights as zeros while maintaining the decoder parameters. Each zero-initialization is followed by a series of epochs in which the model is updated iteratively using mini-batches. The training process can be customized with options to save data during training progress, track the evolution of the coefficients, and store results in a specified directory.
 
 The training process includes:
 1. Seeding the random number generator for reproducibility.
 2. Validating the data type of the input matrix and issuing warnings if the type is not `Float32`.
 3. Optionally saving the training data and results to a specified directory.
-4. Setting up the optimizer and initializing tracking variables for loss, sparsity, entanglement, clustering, and coefficients.
+4. Setting up the optimizer and optionally initializing tracking variables for loss, sparsity, entanglement, clustering, and coefficients.
 5. Iteratively updating the BAE's coefficients using the disentangled componentwise L2-boosting approach.
 6. After all epochs, computing the latent representation, clustering results, and silhouette scores, and updating the metadata object (`MD`) with these results.
 
 # Side Effects
 - Updates the `BAE` object in-place with the learned coefficients and latent representations.
-- Optionally saves training data, loss, sparsity, entanglement, and clustering scores to the specified `data_path`.
+- Optionally saves encoder weights, loss, sparsity, entanglement, and clustering scores to the specified `data_path`.
 - Updates the `MD` object with clustering and feature selection results.
 
 # Returns
-- `output_dict::Dict{String, Union{Vector{eltype(X)}, Vector{Any}}}`: A dictionary containing training metrics such as:
+- `output_dict::Dict{String, Union{Vector{eltype(X)}, Vector{Any}}}`: A dictionary containing training metrics is `save_data=true` or `track_coeffs=true` such as:
   - `"trainloss"`: Mean training loss per epoch.
   - `"sparsity"`: Sparsity levels of the encoder weights after each epoch.
   - `"entanglement"`: Entanglement scores of the latent representations.
@@ -197,7 +197,7 @@ The training process includes:
 
 # Notes
 - The function assumes the presence of a `MetaData` object `MD` if detailed tracking and analysis are required post-training.
--The hyperparameters for training can be adapted by adapting the `BAE.HP` field of the BAE structure.
+- The hyperparameters for training can be adapted by adapting the `BAE.HP` field of the BAE structure.
 - The `save_data` option must be accompanied by a valid `data_path`. If the directory does not exist, it will be created.
 - The function makes use of Flux for the ADAMW optimizer and gradient computation.
 """
@@ -246,7 +246,7 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
 
     for iter in 1:BAE.HP.n_restarts
 
-        @info "Training run: $iter"
+        @info "Training run: $iter/$(BAE.HP.n_restarts) ..."
 
         @showprogress for epoch in 1:BAE.HP.epochs
 
@@ -273,14 +273,15 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
 
             end
 
-            push!(mean_trainlossPerEpoch, mean(batchLosses))
-            push!(sparsity_level, 1 - (count(x->x!=0, BAE.coeffs) / length(BAE.coeffs))) # Percentage of zero elements in the encoder weight matrix (higher values are better)
-            Z = get_latentRepresentation(BAE, Xt)
-            push!(entanglement_score, sum(UpperTriangular(abs.(cor(Z, dims=2)))) - convert(object_type, BAE.HP.zdim)) # Offdiagonal of the Pearson correlation coefficient (upper triangular) matrix between the latent dimensions (closer to 0 is better)
-            Z_cluster = softmax(split_vectors(Z))
-            push!(clustering_score, n - sum([maximum(Z_cluster[:, i]) for i in 1:n])) # Sum of deviations of the maximum cluster probability value per cell from 1 (closer to 0 is better)
-
             if save_data #&& epoch % 10 == 0
+                push!(mean_trainlossPerEpoch, mean(batchLosses))
+                push!(sparsity_level, 1 - (count(x->x!=0, BAE.coeffs) / length(BAE.coeffs))) # Percentage of zero elements in the encoder weight matrix (higher values are better)
+                Z = get_latentRepresentation(BAE, Xt)
+                push!(entanglement_score, sum(UpperTriangular(abs.(cor(Z, dims=2)))) - convert(object_type, BAE.HP.zdim)) # Offdiagonal of the Pearson correlation coefficient (upper triangular) matrix between the latent dimensions (closer to 0 is better)
+                Z_cluster = softmax(split_vectors(Z))
+                push!(clustering_score, n - sum([maximum(Z_cluster[:, i]) for i in 1:n])) # Sum of deviations of the maximum cluster probability value per cell from 1 (closer to 0 is better)
+
+
                 file_path = data_path * "/BAE_coeffs.txt"
                 writedlm(file_path, BAE.coeffs)
                 file_path = data_path * "/Trainloss_BAE.txt"
@@ -327,12 +328,13 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
     @info "Weight matrix sparsity level after the training: $(100 * count(x->x==0, BAE.coeffs) / length(BAE.coeffs))% (zero values).\n Silhouette score of the soft clustering: $(mean(silhouettes))."
 
     output_dict = Dict{String, Union{Vector{eltype(X)}, Vector{Any}}}()
-
-    output_dict["trainloss"] = mean_trainlossPerEpoch
-    output_dict["sparsity"] = sparsity_level
-    output_dict["entanglement"] = entanglement_score
-    output_dict["clustering"] = clustering_score
-    output_dict["silhouettes"] = silhouettes
+    if save_data
+        output_dict["trainloss"] = mean_trainlossPerEpoch
+        output_dict["sparsity"] = sparsity_level
+        output_dict["entanglement"] = entanglement_score
+        output_dict["clustering"] = clustering_score
+        output_dict["silhouettes"] = silhouettes
+    end
 
     if track_coeffs
         output_dict["coefficients"] = coefficients
