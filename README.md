@@ -29,33 +29,13 @@ Or via Julia by running:
   ## Installation
 - Git should be installed on your computer. You can download and install it from [Git's official website](https://git-scm.com/downloads).
 
-0. **Download the repository**
-
-0.1. **Open your terminal**
-   - On macOS or Linux, open the Terminal application.
-   - On Windows, you can use Command Prompt, PowerShell, or Git Bash.
-
-0.2. **Navigate to your desired directory**
-   - Use the `cd` command to change to the directory where you want to clone the repository.
-   - Example (macOS): To change to a directory named `MyProjects` on your desktop, you would use:
-     ```bash
-     cd ~/Desktop/MyProjects
-     ```
-   - Example (Windows): To change to a directory named `MyProjects` on your desktop, you would use:
-     ```bash
-     cd C:\Users\[YourUsername]\Desktop\MyProjects
-     ```
-     
-0.3. **Clone the repository**
-   - Use the `git clone` command followed by the URL of the repository.
-   - You can find the URL on the repository's GitHub page.
-   - Example:
-     ```bash
-     git clone https://github.com/NiklasBrunn/BoostingAutoencoder/tree/main
-     ```
+0. **Clone the repository**:
+  You may want to navigate to a specific directory before cloning the repository.
+   ```bash
+   git clone https://github.com/NiklasBrunn/Sparse-dimension-reduction
 
 1. **Install Julia**
-   - To run the Julia scripts, [Julia v1.9.3](#https://julialang.org/downloads/oldreleases/) has to be downloaded and installed manually by the user. The required packages and their versions are specified in the `Project.toml` and `Manifest.toml` files in the main folder and automatically loaded/installed at the beginning of each script with the `Pkg.activate()` and `Pkg.instantiate()` commands. See [here](https://pkgdocs.julialang.org/v1.2/environments/) for more information on Julia environments. 
+  - To run the Julia scripts, [Julia v1.9.3](#https://julialang.org/downloads/oldreleases/) has to be downloaded and installed manually by the user. The required packages and their versions are specified in the `Project.toml` and `Manifest.toml` files in the main folder and automatically loaded/installed at the beginning of each script with the `Pkg.activate()` and `Pkg.instantiate()` commands. See [here](https://pkgdocs.julialang.org/v1.2/environments/) for more information on Julia environments. 
 
 2. **Install the Julia Kernel for Jupyter**
    - To use Julia as a kernel in Jupyter notebooks, the IJulia package in Julia has to be installed:
