@@ -55,7 +55,7 @@ Or via Julia by running:
 
 
 3. **Install R**
-- ToDo: ...  R version? R package versions?. 
+- Part of the presented workflow is the interaction with an R tool called `NICHES` via Julia. R code can be executed in Julia using the package `RCall` but this requires [R v.4.3.2](https://www.r-project.org) to be downloaded and installed on your computer. 
 - The following R packages are required to run the embedded R code in the Julia scripts: `Seurat`, `SeuratData`, `SeuratWrappers`, `SeuratWrappers`
  - The R packages can be installed by running the Jupyter notebook called `install_R_dependencies.ipynb`.
  - Alternatively, open the terminal start R and install the required packages:
