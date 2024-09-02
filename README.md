@@ -2,7 +2,7 @@
 
 ### Tabel of contents:
 
-- [Installation](#CInstallation)
+- [Installation](#Installation)
 - [Launch Jupyter notebooks](#Launch-Jupyter-notebooks)
 
 
