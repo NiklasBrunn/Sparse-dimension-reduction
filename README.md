@@ -58,7 +58,7 @@ Or via Julia by running:
 - ToDo: ...  R version? R package versions?. 
 - The following R packages are required to run the embedded R code in the Julia scripts: `Seurat`, `SeuratData`, `SeuratWrappers`, `SeuratWrappers`
  - The R packages can be installed by running the Jupyter notebook called `install_R_dependencies.ipynb`.
- - Alternatively, open the terminal and run:
+ - Alternatively, open the terminal start R and install the required packages:
 - ```bash
   R
   ```
