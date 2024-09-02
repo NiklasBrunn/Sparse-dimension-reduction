@@ -40,11 +40,11 @@ Or via Julia by running:
 2. **Install the Julia Kernel for Jupyter**
   - To use Julia as a kernel in Jupyter notebooks, the IJulia package in Julia has to be installed:
 
-   2.1 In the terminal (macOS) or command prompt or power shell (Windows) run:
+  - 2.1 In the terminal (macOS) or command prompt or power shell (Windows) run:
    
-   ```bash
-   julia
-   ```
+  - ```bash
+    julia
+    ```
 
    2.2 Then, in the Julia REPL, enter the following commands:
 
