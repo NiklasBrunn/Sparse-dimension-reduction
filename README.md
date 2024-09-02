@@ -30,9 +30,9 @@ Or via Julia by running:
 - Git should be installed on your computer. You can download and install it from [Git's official website](https://git-scm.com/downloads).
 
 0. **Clone the repository**:
-  You may want to navigate to a specific directory before cloning the repository.
-   ```bash
-   git clone https://github.com/NiklasBrunn/Sparse-dimension-reduction
+  - You may want to navigate to a specific directory before cloning the repository.
+  - ```bash
+    git clone https://github.com/NiklasBrunn/Sparse-dimension-reduction
 
 1. **Install Julia**
   - To run the Julia scripts, [Julia v1.9.3](https://julialang.org/downloads/oldreleases/) has to be downloaded and installed manually by the user. The required packages and their versions are specified in the `Project.toml` and `Manifest.toml` files in the main folder and automatically loaded/installed at the beginning of each notebook with the `Pkg.activate()` and `Pkg.instantiate()` commands. See [here](https://pkgdocs.julialang.org/v1.2/environments/) for more information on Julia environments. 
@@ -55,7 +55,7 @@ Or via Julia by running:
 
 
 3. **Install R**
-   - ...
+   - ToDo: ...
    - To run the Python scripts, we included details about a [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) environment in (`environment.yml`) consisting of information about the Python version and used packages. A new conda environment can be created from this file. See [here](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#activating-an-environment) for more details about managing and creating conda environments. Follow these steps to set up your development environment:
 
 2.1. **Navigate to the project directory**
@@ -80,15 +80,13 @@ Or via Julia by running:
 
 ## Launch Jupyter notebooks
 1. **From terminal**
-  In the terminal run:
-
-  - In the terminal run:
+  - In the terminal run the following command to start a Jupyter notebook server with the Julia programming environment:
     ```bash
     julia -e 'using IJulia; notebook()'
     ```
 
 2. **Using VS code**
-  ...
+  - ToDo: ...
 
 
 
