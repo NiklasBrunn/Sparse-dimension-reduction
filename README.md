@@ -55,27 +55,18 @@ Or via Julia by running:
 
 
 3. **Install R**
-   - ToDo: ...
-   - To run the Python scripts, we included details about a [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) environment in (`environment.yml`) consisting of information about the Python version and used packages. A new conda environment can be created from this file. See [here](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#activating-an-environment) for more details about managing and creating conda environments. Follow these steps to set up your development environment:
-
-2.1. **Navigate to the project directory**
-   - Navigate to the directory of the cloned GitHub repository (macOS):
-     ```bash
-     cd ~/BoostingAutoencoder
-     ```
-   - (Windows):
-     ```bash
-     cd \BoostingAutoencoder
-     ```
-       
-2.2. **Create the conda environment**
-   - Create a new conda environment that is named as specified in the `environment.yml` file (in this case it is named `BAE-env`):
-     ```bash
-     conda env create -f environment.yml
-     ```
-
-2.3. **Use the BAE conda environment for running python code**
-   - Once the environment is created, select it as the kernel for running the python code in the repository.
+- ToDo: ...  R version? R package versions?. 
+- The following R packages are required to run the embedded R code in the Julia scripts: `Seurat`, `SeuratData`, `SeuratWrappers`, `SeuratWrappers`
+ - The R packages can be installed by running the Jupyter notebook called `install_R_dependencies.ipynb`.
+ - Alternatively, open the terminal and run:
+- ```bash
+  R
+  ```
+- ```r
+  install.packages(c("Seurat", "SeuratData", "SeuratWrapper"))
+  library(devtools)
+  install_github('msraredon/NICHES', ref = 'master')
+  ```
 
 
 ## Launch Jupyter notebooks
