@@ -1,30 +1,10 @@
 # The-role-of-sparse-dimension-reduction-in-the-analysis-of-single-cell-resolved-interactions
 
-## Required R Packages
+### Tabel of contents:
 
-The following R packages are required to run the embedded R code in the Julia scripts:
+- [Installation](#CInstallation)
+- [Launch Jupyter notebooks](#Launch-Jupyter-notebooks)
 
-- `Seurat`
-- `SeuratData`
-- `SeuratWrappers`
-- `NICHES`
-
-You can install these packages in R by running:
-
-```r
-install.packages(c("Seurat", "SeuratData", "SeuratWrapper"))
-library(devtools)
-install_github('msraredon/NICHES', ref = 'master')
-```
-
-Or via Julia by running:
-
-> using RCall;
-  R"""
-  install.packages(c("Seurat", "SeuratData", "SeuratWrapper"))
-  library(devtools)
-  install_github('msraredon/NICHES', ref = 'master')
-  """
 
 ## Installation
 - Git should be installed on your computer. You can download and install it from [Git's official website](https://git-scm.com/downloads).
