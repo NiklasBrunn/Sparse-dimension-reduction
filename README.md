@@ -26,7 +26,7 @@ Or via Julia by running:
   install_github('msraredon/NICHES', ref = 'master')
   """
 
-  ## Installation
+## Installation
 - Git should be installed on your computer. You can download and install it from [Git's official website](https://git-scm.com/downloads).
 
 0. **Clone the repository**:
@@ -35,10 +35,10 @@ Or via Julia by running:
    git clone https://github.com/NiklasBrunn/Sparse-dimension-reduction
 
 1. **Install Julia**
-  - To run the Julia scripts, [Julia v1.9.3](#https://julialang.org/downloads/oldreleases/) has to be downloaded and installed manually by the user. The required packages and their versions are specified in the `Project.toml` and `Manifest.toml` files in the main folder and automatically loaded/installed at the beginning of each script with the `Pkg.activate()` and `Pkg.instantiate()` commands. See [here](https://pkgdocs.julialang.org/v1.2/environments/) for more information on Julia environments. 
+  - To run the Julia scripts, [Julia v1.9.3](https://julialang.org/downloads/oldreleases/) has to be downloaded and installed manually by the user. The required packages and their versions are specified in the `Project.toml` and `Manifest.toml` files in the main folder and automatically loaded/installed at the beginning of each notebook with the `Pkg.activate()` and `Pkg.instantiate()` commands. See [here](https://pkgdocs.julialang.org/v1.2/environments/) for more information on Julia environments. 
 
 2. **Install the Julia Kernel for Jupyter**
-   - To use Julia as a kernel in Jupyter notebooks, the IJulia package in Julia has to be installed:
+  - To use Julia as a kernel in Jupyter notebooks, the IJulia package in Julia has to be installed:
 
    2.1 In the terminal (macOS) or command prompt or power shell (Windows) run:
    
@@ -46,7 +46,7 @@ Or via Julia by running:
    julia
    ```
 
-   2.2 In the Julia REPL, enter the following commands:
+   2.2 Then, in the Julia REPL, enter the following commands:
 
    ```julia
    using Pkg
@@ -54,7 +54,7 @@ Or via Julia by running:
    ```
 
 
-2. **Install R**
+3. **Install R**
    - ...
    - To run the Python scripts, we included details about a [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) environment in (`environment.yml`) consisting of information about the Python version and used packages. A new conda environment can be created from this file. See [here](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#activating-an-environment) for more details about managing and creating conda environments. Follow these steps to set up your development environment:
 
@@ -77,14 +77,18 @@ Or via Julia by running:
 2.3. **Use the BAE conda environment for running python code**
    - Once the environment is created, select it as the kernel for running the python code in the repository.
 
-3. **Launch Jupyter notebooks from terminal**
-   
-   3.1 In the terminal run:
 
-   - In the terminal run:
-     ```bash
-     julia -e 'using IJulia; notebook()'
-     ```
+## Launch Jupyter notebooks
+1. **From terminal**
+  In the terminal run:
+
+  - In the terminal run:
+    ```bash
+    julia -e 'using IJulia; notebook()'
+    ```
+
+2. **Using VS code**
+  ...
 
 
 
