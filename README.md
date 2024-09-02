@@ -1,4 +1,4 @@
-# The-role-of-sparse-dimension-reduction-in-the-analysis-of-single-cell-resolved-interactions
+# Sparse dimensionality reduction for analyzing single-cell-resolved interactions
 
 ### Tabel of contents:
 
