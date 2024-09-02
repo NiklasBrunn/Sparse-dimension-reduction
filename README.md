@@ -46,12 +46,12 @@ Or via Julia by running:
     julia
     ```
 
-   2.2 Then, in the Julia REPL, enter the following commands:
+- 2.2 Then, in the Julia REPL, enter the following commands:
 
-   ```julia
-   using Pkg
-   Pkg.add("IJulia")
-   ```
+-   ```julia
+-   using Pkg
+-   Pkg.add("IJulia")
+-   ```
 
 
 3. **Install R**
