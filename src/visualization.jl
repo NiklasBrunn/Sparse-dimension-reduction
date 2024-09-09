@@ -418,6 +418,171 @@ function FeaturePlots(dict::Dict, featurenames::AbstractVector{String}, X::Abstr
     end
 end
 
+function origData_FeaturePlots(X::AbstractMatrix{T}, embedding::AbstractMatrix{T}, MD::MetaData, genenames::AbstractVector{String}; 
+    n_features::Int=4,
+    marker_size::String="50",
+    color_range::Union{AbstractVector{String}, Nothing}=nothing,
+    color_scheme::Union{String, Nothing}="reds",
+    legend_title::String="Counts",
+    Width::Int=800,
+    Height::Int=800,
+    file_type::String=".png",
+    figures_path::Union{String, Nothing}=nothing
+    ) where T
+
+    if isnothing(MD.Top_features)
+        @error "No top features found in metadata!"
+    end
+
+    if isnothing(figures_path)
+
+        figures_path = joinpath(@__DIR__, "../figures/tutorial/origData_FeaturePlots")
+        @info "No figures path provided. Figures will be saved to: $figures_path."
+
+        if !isdir(figures_path)
+            mkdir(figures_path)
+        end
+    else
+        figures_path = joinpath(figures_path, "origData_FeaturePlots")
+
+        if !isdir(figures_path)
+            mkdir(figures_path)
+        end
+
+    end
+
+    df_origData = DataFrame(X, :auto);
+    rename!(df_origData, Symbol.(genenames)) 
+
+    for cluster in 1:length(MD.Top_features)
+        n_features = 4;
+        topinteractions = MD.Top_features["$(cluster)"][:, :Features]
+
+        if length(topinteractions) > 0
+
+            if length(topinteractions) < n_features
+                n_features = length(topinteractions)
+            end
+
+            split_identifyer = '\u2014'
+            topinteractions = vcat(split.(topinteractions[1:n_features], split_identifyer)...)
+
+            if !isdir(figures_path * "/Cluster_$(cluster)")
+                mkdir(figures_path * "/Cluster_$(cluster)")
+            end
+
+            for gene in topinteractions
+                vegascatterplot(embedding, df_origData[!, Symbol(gene)]; 
+                   path=figures_path * "/Cluster_$(cluster)/" * "Gene_$(gene)_origData" * file_type,
+                   Title="$(gene)", Width=Width, Height=Height,
+                   legend_title=legend_title, color_field="labels:q",
+                   scheme=color_scheme, domain_mid=nothing, range=color_range, save_plot=true,
+                   marker_size=marker_size
+                )
+            end
+        end
+
+    end
+
+end
+
+function create_spatialInteractionPlots(file_path::String, MD::MetaData, X::AbstractMatrix{T}; 
+    figures_path::Union{String, Nothing}=nothing,
+    background_color::String="light", 
+    legend_title::String="Value", 
+    n_Interactions::Int=5, 
+    marker_size::String="150", 
+    fig_type::String=".png"
+    ) where T
+
+    if !isfile(file_path)
+        @error "File not found!"
+    end
+
+    if MD.Top_features == nothing
+        @error "No top features, i.e., interactions found in metadata!"
+    end
+
+    if !isnothing(figures_path) && !isdir(figures_path)
+        @error "Directory not found!"
+
+    elseif isnothing(figures_path)
+        projectpath = joinpath(@__DIR__, "../")
+        figures_path = projectpath * "/figures/"
+
+        if !isdir(figures_path)
+            mkdir(figures_path)
+        end
+
+        @info "No figurespath provided. Figures will be saved to the default directory: $(figures_path)"
+
+    end
+
+    color_range = []
+    if background_color == "light"
+        color_range = [
+            "#000000", "#220022", "#440044", "#660066", "#880088", "#aa00aa", "#cc00cc", "#ee00ee",
+            "#ff00ff", "#ff19ff", "#ff33ff", "#ff4cff", "#ff66ff", "#ff7fff", "#ff99ff", "#ffb2ff",
+            "#ffccff", "#ffe5ff", "#ffccf5", "#ff99eb", "#ff66e0"
+        ]
+
+    elseif background_color == "dark"
+        color_range = [
+            "#fff5f5", "#ffe0e0", "#ffcccc", "#ffb8b8", "#ffa3a3", "#ff8f8f", "#ff7a7a", "#ff6666",
+            "#ff5252", "#ff3d3d", "#ff2929", "#ff1414", "#ff0000", "#e50000", "#cc0000", "#b20000",
+            "#990000", "#7f0000", "#660000", "#4c0000", "#330000"
+        ]
+
+    else
+        @error "Background color not recognized!"
+    end
+
+
+    R"library(Seurat)"
+
+    @rput file_path  
+        
+    @info "Loading the NICHES object from: $(file_path)"
+
+    R"""
+    NICHES_obj <- readRDS(file_path);
+    x_coords <- NICHES_obj@meta.data$x
+    y_coords<- NICHES_obj@meta.data$y
+    """
+
+    #---Convert the data to Julia:
+    @rget x_coords
+    @rget y_coords
+
+    R"rm(list = ls())"
+    R"gc()"
+
+    x_coords = number_vector = parse.(Int, strip.(x_coords))
+    y_coords = number_vector = parse.(Int, strip.(y_coords))
+    cell_locations_CCIM = Matrix{Float32}(hcat(x_coords, y_coords))
+
+
+    #---Create scatter plots of the UMAP embedding of the original data representation colored by expression levels of top selected genes for different clusters:
+    if !isdir(figures_path * "/SpatialInteractionPlots")
+        # Create the folder if it does not exist
+        mkdir(figures_path * "/SpatialInteractionPlots")
+    end
+
+    FeaturePlots(MD.Top_features, MD.featurename, X, cell_locations_CCIM; 
+        top_n=n_Interactions,
+        marker_size=marker_size, 
+        fig_type=fig_type,
+        path=figures_path * "/SpatialInteractionPlots/",
+        legend_title=legend_title,
+        color_field="labels:q",
+        scheme=nothing, 
+        domain_mid=nothing,
+        range=color_range
+    )
+
+    @info "Figures saved to: $(figures_path)!"
+end
+
 function track_coefficients(coefficients, dim; iters::Union{Int, Nothing}=nothing, xscale::Symbol=:log10)
     # Number of iterations and number of coefficients
     num_iterations = length(coefficients)

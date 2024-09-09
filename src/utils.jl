@@ -551,24 +551,79 @@ function load_spatial_mousebrain_data(;
         brain <- RunPCA(brain, assay = "SCT", verbose = FALSE)
         brain <- FindNeighbors(brain, reduction = "pca", dims = 1:30)
         brain <- FindClusters(brain, verbose = FALSE)
+        seurat_clusters <- brain@meta.data$seurat_clusters
         brain <- RunUMAP(brain, reduction = "pca", dims = 1:30)
 
         # Add spatial coordinates to the metadata:
-        brain@meta.data$x <- brain@images$anterior1@boundaries$centroids@coords[, 1]
-        brain@meta.data$y <- brain@images$anterior1@boundaries$centroids@coords[, 2]
+        x_coords <- brain@images$anterior1@boundaries$centroids@coords[, 1]
+        y_coords <- brain@images$anterior1@boundaries$centroids@coords[, 2]
+        brain@meta.data$x <- x_coords
+        brain@meta.data$y <- y_coords
 
         # Set the default assay to spatial and normalize counts:
         DefaultAssay(brain) <- "Spatial"
         brain <- NormalizeData(brain)
 
-        x_coords <- brain@meta.data$x
-        y_coords <- brain@meta.data$y
+        # ALRA imputation:
+        brain <- SeuratWrappers::RunALRA(brain, verbose = F)
+        X <- as.matrix(GetAssayData(object = brain, assay = "alra", slot = "data"))
+        genenames <- rownames(brain)
 
         saveRDS(brain, file = paste0(data_path, "MouseBrain_Seurat.rds"))
+        """
+        @rget x_coords
+        @rget y_coords
+        @rget seurat_clusters
+        @rget X
+        @rget genenames
 
+        X = Matrix{Float32}(X')
+        genenames = String.(genenames)
+
+        cell_locations = Matrix{Float32}(hcat(x_coords, y_coords))
+        seurat_clusters = String.(seurat_clusters)
+
+        R"""
         rm(list=ls())
         gc()
         """
+
+        return X, cell_locations, seurat_clusters, genenames
+
+    else
+        @rput data_path
+
+        R"""
+        library(Seurat)
+
+        brain <- readRDS(paste0(data_path, "MouseBrain_Seurat.rds"))
+
+        X <- as.matrix(GetAssayData(object = brain, assay = "alra", slot = "data"))
+        genenames <- rownames(brain)
+
+        x_coords <- brain@meta.data$x
+        y_coords <- brain@meta.data$y
+        seurat_clusters <- brain@meta.data$seurat_clusters
+        """
+
+        @rget x_coords
+        @rget y_coords
+        @rget seurat_clusters
+        @rget X
+        @rget genenames
+
+        X = Matrix{Float32}(X')
+        genenames = String.(genenames)
+
+        cell_locations = Matrix{Float32}(hcat(x_coords, y_coords))
+        seurat_clusters = String.(seurat_clusters)
+
+        R"""
+        rm(list=ls())
+        gc()
+        """
+
+        return X, cell_locations, seurat_clusters, genenames
 
     end
 
@@ -1328,5 +1383,3 @@ function load_CCIM_CtN(file_path::String; min_obs::Union{Int, Nothing}=20, min_f
 
     return X, X_st, MD
 end
-
-#ToDo: Add the option to keep track of the cell indices that are mapped by NICHES for later re-identifying them in the original data.
