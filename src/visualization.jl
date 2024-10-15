@@ -610,7 +610,7 @@ function track_coefficients(coefficients, dim; iters::Union{Int, Nothing}=nothin
 
     # Create the plot
     x_scale = string(xscale)
-    pl = plot(x, y', xlabel="Iteration " * x_scale, ylabel="Coefficient Value", title="Evolution of Coefficients Across Training Epochs", lw=2, legend=false, xscale=xscale)
+    pl = plot(x, y', xlabel="Iteration " * x_scale, ylabel="Coefficient value", title="Evolution of coefficients across training epochs", lw=2, legend=false, xscale=xscale)
 
     return pl
 end
