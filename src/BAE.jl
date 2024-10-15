@@ -28,10 +28,10 @@ include("simulation.jl");
 #--- Exported functions ---#
 export 
     # BAE model architecture:
-    Hyperparameters, MetaData, BoostingAutoencoder, generate_BAEdecoder,
+    Hyperparameters, MetaData, BoostingAutoencoder, generate_BAEdecoder, 
 
     # BAE model optimization functions:
-    get_unibeta, compL2Boost!, disentangled_compL2Boost!, train_BAE!, 
+    get_unibeta, compL2Boost!, disentangled_compL2Boost!, train_BAE!,
 
     # plotting functions:
     vegaheatmap, vegascatterplot, create_colored_vegascatterplots, TopFeaturesPerCluster_scatterplot, 
@@ -44,7 +44,7 @@ export
     # utility functions:
     scale, NaNstoZeros!, Normalize, MinMaxNormalize, log1p, log1pNormalize, filter_observations, 
     filter_features, filter_cells_by_mitochondrial_content, get_latentRepresentation, generate_umap, 
-    find_zero_columns, split_vectors, slit_softmax, topFeatures_per_Cluster, get_important_genes, hsl_to_hex, 
+    find_zero_columns, split_vectors, topFeatures_per_Cluster, get_important_genes, get_topFeatures, hsl_to_hex, 
     load_rat_scRNAseq_data, load_spatial_mousebrain_data, create_seurat_object, run_NICHES_wrapper, load_CCIM_CtC, load_CCIM_StC, 
     load_CCIM_CtS, load_CCIM_CtC_Spatial, load_CCIM_NtC, load_CCIM_CtN
 #

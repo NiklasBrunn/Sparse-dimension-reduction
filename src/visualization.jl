@@ -305,7 +305,7 @@ function TopFeaturesPerCluster_scatterplot(df::DataFrame, key::String;
                 size=size,
                 ylabel="Max.-norm. coefficient", 
                 guidefontsize=14,
-                title="Top $(top_n) features for cluster" * key * "($(length(df.Scores)) nonzero features)",
+                title="Top $(top_n) features for cluster" * key * " ($(length(df.Scores)) nonzero features)",
                 titlefontsize=14,
                 legend=false, 
                 markersize=8,
@@ -359,7 +359,7 @@ function normalizedFeatures_scatterplot(vec::AbstractVector, labels::AbstractVec
                 size=size,
                 ylabel="Max.-norm. coefficient", 
                 guidefontsize=14,
-                title="Top $(top_n) features inlatent dimension $(dim) ($(length(non_zero_indices)) nonzero features)",
+                title="Top $(top_n) features in latent dimension $(dim) ($(length(non_zero_indices)) nonzero features)",
                 titlefontsize=14,
                 legend=false, 
                 markersize=8,
@@ -405,7 +405,7 @@ function FeaturePlots(dict::Dict, featurenames::AbstractVector{String}, X::Abstr
                 featurename = sel_features[feature]
                 sel_ind = findall(x->x==featurename, featurenames);
                 vegascatterplot(embedding, vec(X[:, sel_ind]); 
-                                path=figurespath_ldim * "/Topgene_$(feature)_"* featurename *"_Topic_$(ldim)"*fig_type,
+                                path=figurespath_ldim * "/TopFeature_$(feature)_"* featurename *"_Topic_$(ldim)"*fig_type,
                                 Title=Title="Top feature $(feature): " * featurename, Width=Width, Height=Height,
                                 legend_title=legend_title, color_field=color_field,
                                 scheme=scheme, domain_mid=domain_mid, range=range, save_plot=true,

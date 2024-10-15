@@ -4,6 +4,7 @@
 
 - [Installation](#Installation)
 - [Launch Jupyter notebooks](#Launch-Jupyter-notebooks)
+- [ToDo](#ToDo)
 
 
 ## Installation
@@ -50,14 +51,12 @@
 
 
 ## Launch Jupyter notebooks
-1. **From terminal**
   - In the terminal run the following command to start a Jupyter notebook server with the Julia programming environment:
     ```bash
     julia -e 'using IJulia; notebook()'
     ```
 
-2. **Using VS code**
-  - ToDo: ...
 
 
-
+## ToDo
+- [] Allow to load HDF5 files (Anndata / Python) and convert to Seurat for running NICHES via `anndataR`

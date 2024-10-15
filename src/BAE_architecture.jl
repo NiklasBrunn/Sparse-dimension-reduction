@@ -1,34 +1,9 @@
 #---Hyperparameter:
-"""
-    mutable struct Hyperparameters
-
-A mutable structure for storing hyperparameters specific to a Boosting Autoencoder (BAE) model.
-
-# Fields
-
-- `zdim::Int`: Dimensionality of the BAE latent space, i.e., the number of latent dimensions. This implicitly defines the number of clusters to which observational units can be assigned, which is 2 * zdim in the case of including the `split-softmax` transformation as part of the BAE architecture. Default is `10`. 
-- `n_restarts::Int`: Number of times to restart the BAE training process. Specifically, the encoder weights will be set to zero while decoder parameters are not effected. This can increases the sparsitylevel of the encoder weight matrix after training. Default is `1`.
-- `epochs::Int`: Number of training epochs, defining how many times the model will be trained on the entire dataset. If the `n_restarts` parameter is greater than 1, the model will be trained for `epochs` epochs after each restart. Default is `50`.
-- `batchsize::Int`: Size of each mini-batch used in the training process. Default is `2^9`.
-- `η::Union{AbstractFloat, Int}`: Learning rate (η), which controls the step size in the optimization of the decoder parameters (AdamW optimizer). Can be a floating-point number or an integer. Default is `0.01`.
-- `λ::Union{AbstractFloat, Int}`: Regularization parameter (λ), used to prevent overfitting by penalizing large weights. Can be a floating-point number or an integer. Default is `0.1`.
-- `ϵ::Union{AbstractFloat, Int}`: Step width (ϵ), which controls the step size in the boosting component, defining the scaling parameter for the encoder weight updates. Can be a floating-point number or an integer. Default is `0.001`.
-- `M::Int`: The number of boosting steps per training iteration. Default is `1`.
-
-# Constructor
-
-- `Hyperparameters(; zdim::Int=10, n_restarts::Int=1, epochs::Int=50, batchsize::Int=2^9, η::Union{AbstractFloat, Int}=0.01, λ::Union{AbstractFloat, Int}=0.1, ϵ::Union{AbstractFloat, Int}=0.001, M::Int=1)`: 
-  Creates a new instance of `Hyperparameters` with default or user-defined values for each field.
-
-# Example Usage
-
-```julia
-HP = Hyperparameters(zdim=20, η=0.001, epochs=100)
-"""
 mutable struct Hyperparameters
     zdim::Int
-    n_restarts::Int
-    epochs::Int
+    n_runs::Int
+    max_iter::Int
+    tol::Union{AbstractFloat, Nothing}
     batchsize::Int
     η::Union{AbstractFloat, Int}
     λ::Union{AbstractFloat, Int}
@@ -36,8 +11,8 @@ mutable struct Hyperparameters
     M::Int
 
     # Constructor with default values
-    function Hyperparameters(; zdim::Int=10, n_restarts::Int=1, epochs::Int=50, batchsize::Int=2^9, η::Union{AbstractFloat, Int}=0.01, λ::Union{AbstractFloat, Int}=0.1, ϵ::Union{AbstractFloat, Int}=0.001, M::Int=1)
-        new(zdim, n_restarts, epochs, batchsize, η, λ, ϵ, M)
+    function Hyperparameters(; zdim::Int=10, n_runs::Int=2, max_iter::Int=1000, tol::Union{AbstractFloat, Nothing}=1e-5, batchsize::Int=2^9, η::Union{AbstractFloat, Int}=0.01, λ::Union{AbstractFloat, Int}=0.1, ϵ::Union{AbstractFloat, Int}=0.001, M::Int=1)
+        new(zdim, n_runs, max_iter, tol, batchsize, η, λ, ϵ, M)
     end 
 end
 
@@ -82,50 +57,6 @@ mutable struct MetaData
 end
 
 #---BAE architecture:
-"""
-    mutable struct BoostingAutoencoder
-
-A mutable struct representing a Boosting Autoencoder (BAE), which combines a coefficient matrix, i.e., the encoder weight matrix, a decoder network, and various representations of the latent space for dimensionality reduction and feature extraction tasks that can be added after training a BAE model.
-
-# Fields
-
-- `coeffs::AbstractMatrix{Float32}`: A matrix of coefficients (encoder weights) used to transform the input data into the latent space. This defines the single-layer linear encoder of the BAE. Per default, the encoder is initialized with zero values to learn sparse connections.
-- `decoder::Union{Chain, Dense}`: A neural network model used as the decoder for reconstructing data from the latent space. This can be a `Chain` or `Dense` layer from the Flux library.
-- `HP::Hyperparameters`: An instance of the `Hyperparameters` struct containing the hyperparameters used for training the autoencoder (for more details see the documentation of `Hyperparameters`).
-- `Z::Union{Nothing, Matrix{Float32}}`: An optional matrix representing the latent representation of the encoded input data. Initialized as `nothing`.
-- `Z_cluster::Union{Nothing, Matrix{Float32}}`: An optional matrix representing the cluster-membership probabilities of observations. Initialized as `nothing`.
-- `UMAP::Union{Nothing, Matrix{Float32}}`: An optional matrix representing a UMAP (Uniform Manifold Approximation and Projection) embedding of the BAE latent representation of the data. Initialized as `nothing`.
-
-# Constructor
-
-- `BoostingAutoencoder(; coeffs::Matrix{Float32}, decoder::Union{Chain, Dense}, HP::Hyperparameters)`: 
-  Initializes a `BoostingAutoencoder` instance with the specified coefficients, decoder, and hyperparameters. The latent space representations (`Z`, `Z_cluster`, `UMAP`) are initialized as `nothing` and can be added after training.
-
-# Methods
-
-- `(BAE::BoostingAutoencoder)(X)`: Applies the decoder to the input `X` after multiplying it with the transposed coefficients. This allows the `BoostingAutoencoder` instance to be called as a function for reconstruction or other tasks.
-
-- `Base.summary(BAE::BoostingAutoencoder)`: Prints a summary of the key hyperparameters used for constructing and training the Boosting Autoencoder. This includes details such as the latent dimensions, number of restarts, training epochs, batch size, learning rate, weight decay, step size for boosting updates, and the number of boosting iterations.
-
-
-# Example Usage
-
-```julia
-# Define the coefficients, decoder, and hyperparameters
-coeffs = rand(Float32, 10, 5)
-decoder = Chain(Dense(5, 10, relu), Dense(10, 1))
-HP = Hyperparameters(zdim=5, epochs=100, η=0.001)
-
-# Create a BoostingAutoencoder instance
-BAE = BoostingAutoencoder(coeffs=coeffs, decoder=decoder, HP=HP)
-
-# Use the BAE to reconstruct an input matrix
-X = rand(Float32, 10, 100)
-reconstructed_X = BAE(X)
-
-# Print a summary of the BoostingAutoencoder
-summary(BAE)s
-"""
 mutable struct BoostingAutoencoder
     coeffs::AbstractMatrix{Float32}
     decoder::Union{Chain, Dense}
@@ -146,8 +77,9 @@ function Base.summary(BAE::BoostingAutoencoder)
     HP = BAE.HP
     println("Initial hyperparameter for constructing and training a BAE:
      latent dimensions: $(HP.zdim),
-     number of encoder re-starts: $(HP.n_restarts),
-     training epochs: $(HP.epochs),
+     number of encoder re-starts: $(HP.n_runs),
+     maximum number of training epochs per run: $(HP.max_iter),
+     tolerance: $(HP.tol),
      batchsize: $(HP.batchsize),
      learning rate for decoder parameter: $(HP.η),
      weight decay parameter for decoder parameters: $(HP.λ),

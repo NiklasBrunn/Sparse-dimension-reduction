@@ -5,6 +5,23 @@
 #    return (X .- mean(X, dims=dims)) ./ std(X, corrected=corrected_std, dims=dims)
 #end
 
+"""
+    scale(X::AbstractArray{T}; corrected_std::Bool=true, dims::Int=1) where T
+
+Scales the input array `X` by centering and normalizing along the specified dimension(s).
+
+This function standardizes the array `X` by subtracting the mean and dividing by the standard deviation along the specified dimension `dims`. If `corrected_std` is `true`, the corrected (unbiased) standard deviation is used.
+
+# Arguments
+- `X::AbstractArray{T}`: Input array to be standardized. Can be of any numeric type `T`.
+- `corrected_std::Bool=true`: Whether to use the corrected (unbiased) standard deviation, which divides by `n-1`. If `false`, divides by `n` (default: `true`).
+- `dims::Int=1`: Dimension along which to compute the mean and standard deviation. Defaults to `1` (i.e., along columns for matrices).
+
+# Returns
+- A new array of the same type and shape as `X`, where each element is standardized (mean = 0, standard deviation = 1) along the specified dimension.
+
+The operation is performed in a memory-efficient way using views and in-place broadcasting.
+"""
 @inline function scale(X::AbstractArray{T}; corrected_std::Bool=true, dims::Int=1) where T
     M = mean(X, dims=dims)
     S = std(X, corrected=corrected_std, dims=dims)
@@ -13,6 +30,25 @@
     return X_st
 end
 
+"""
+    NaNstoZeros!(X::AbstractArray{T}) where T
+
+Replaces all `NaN` values in the input array `X` with zeros, modifying the array in place.
+
+This function searches for `NaN` values in the array `X` and replaces them with zeros of the appropriate type, determined by the element type of `X`.
+
+# Arguments
+- `X::AbstractArray{T}`: Input array of any numeric type `T` that may contain `NaN` values. The array is modified in place.
+
+# Returns
+- The input array `X`, with all `NaN` values replaced by zeros, returned as the same array object (in-place operation).
+
+# Example
+```julia
+X = [1.0, NaN, 3.0]
+NaNstoZeros!(X)  # X becomes [1.0, 0.0, 3.0]
+```
+"""
 function NaNstoZeros!(X::AbstractArray{T}) where T
 
     X[isnan.(X)] .= convert(eltype(X), 0)
@@ -20,6 +56,27 @@ function NaNstoZeros!(X::AbstractArray{T}) where T
     return X
 end
 
+"""
+    Normalize(X::AbstractMatrix{T}; dims::Int=2, rescale::Union{Int, AbstractFloat}=10000) where T
+
+Normalizes the input matrix `X` along the specified dimension and rescales the values by a factor.
+
+This function normalizes the matrix `X` by dividing each element by the sum of elements along the specified dimension `dims`. After normalization, the resulting matrix is scaled by the `rescale` factor. The function handles row-wise or column-wise normalization based on the value of `dims`.
+
+# Arguments
+- `X::AbstractMatrix{T}`: The input matrix of numeric type `T` to be normalized.
+- `dims::Int=2`: The dimension along which to normalize. `dims=1` normalizes over rows, and `dims=2` (default) normalizes over columns.
+- `rescale::Union{Int, AbstractFloat}=10000`: The scaling factor to apply after normalization. Defaults to `10000`.
+
+# Returns
+- A new matrix of the same type as `X`, where the values are normalized and rescaled.
+
+# Example
+```julia
+X = [1.0 2.0; 3.0 4.0]
+Y = Normalize(X, dims=2, rescale=10000)  # Normalizes over columns and scales the result
+```
+"""
 function Normalize(X::AbstractMatrix{T}; dims::Int=2, rescale::Union{Int, AbstractFloat}=10000) where T
 
     if dims == 1
@@ -42,14 +99,74 @@ function Normalize(X::AbstractMatrix{T}; dims::Int=2, rescale::Union{Int, Abstra
     return Matrix(Z)
 end
 
+"""
+    MinMaxNormalize(v::AbstractVector{T}) where T
+
+Applies min-max normalization to the input vector `v`.
+
+This function scales the elements of the vector `v` such that the minimum value in `v` is mapped to 0, and the maximum value is mapped to 1. All other elements are scaled proportionally within this range.
+
+# Arguments
+- `v::AbstractVector{T}`: A vector of any numeric type `T`.
+
+# Returns
+A vector of the same size as `v`, with elements scaled to the range [0, 1].
+
+# Example
+```julia
+v = [1, 2, 3, 4, 5]
+normalized_v = MinMaxNormalize(v)
+# Result: [0.0, 0.25, 0.5, 0.75, 1.0]
+```
+"""
 function MinMaxNormalize(v::AbstractVector{T}) where T
     return (v .- minimum(v)) ./ (maximum(v) - minimum(v))
 end
 
+"""
+    log1p(X::AbstractArray{T}) where T
+
+Applies the element-wise transformation `log(1 + x)` to each element in the array `X`, with `1` converted to the element type of `X` for type stability.
+
+# Arguments
+- `X::AbstractArray{T}`: An array of any numeric type `T`.
+
+# Returns
+An array of the same size and type as `X`, where each element is the result of applying the `log(1 + x)` operation with `1` converted to the type of `X`.
+
+# Example
+```julia
+X = [0.0, 1.0, 2.0]
+result = log1p(X)
+# Result: [0.0, 0.693147, 1.098612]
+```
+"""
 function log1p(X::AbstractArray{T}) where T
-    return log.(1 .+ X)
+    return log.(convert(eltype(X), 1) .+ X)
 end
 
+"""
+    log1pNormalize(X::AbstractArray{T}; dims::Int=2, rescale::Union{Int, AbstractFloat}=10000) where T
+
+Applies normalization followed by the `log(1 + x)` transformation to the input array `X`.
+
+This function first normalizes the input array `X` along the specified dimension using the provided rescaling factor. It then applies the element-wise `log(1 + x)` transformation to the normalized array. The normalization step rescales the values in `X` based on the specified `dims` and `rescale` values.
+
+# Arguments
+- `X::AbstractArray{T}`: An array of any numeric type `T`.
+- `dims::Int=2`: The dimension along which normalization is applied. Defaults to `2`.
+- `rescale::Union{Int, AbstractFloat}=10000`: A rescaling factor applied during normalization. Defaults to `10000`.
+
+# Returns
+An array of the same size and type as `X`, where each element is first normalized and then transformed using `log(1 + x)`.
+
+# Example
+```julia
+X = [0.0 2.0; 3.0 4.0]
+Z = log1pNormalize(X, dims=1, rescale=10000)
+# Result: A normalized array with log1p transformation applied
+```
+"""
 function log1pNormalize(X::AbstractArray{T}; dims::Int=2, rescale::Union{Int, AbstractFloat}=10000) where T
 
     Z = Normalize(X; dims=dims, rescale=rescale)
@@ -273,6 +390,33 @@ function get_important_genes(BAE::BoostingAutoencoder, MD::MetaData; save_data::
     end
     
     return important_genes
+end
+
+function get_topFeatures(BAE::BoostingAutoencoder, MD::MetaData)
+    #Currently per latent dimension. Should it be updated such that top features per cluster are computed?
+
+    if isnothing(MD.featurename)
+        @warn "The metadata does not contain the feature names ..."
+        MD.featurename = ["$(j)" for j in 1:size(BAE.coeffs, 1)]
+    end
+
+    dict = Dict{Int, Vector{String}}();
+
+    for l in 1:size(BAE.coeffs, 2)
+
+        weights = abs.(BAE.coeffs[:, l])
+        inds = sortperm(weights; rev=true)
+        weights = weights[inds]
+        sort_featurenames = MD.featurename[inds]
+
+        diffs = [weights[i] - weights[i+1] for i in 1:length(weights)-1]
+        topGene_inds = findmax(diffs)[2]      
+        sort_featurenames[1:topGene_inds]
+
+        dict[l] = sort_featurenames[1:topGene_inds]
+    end
+
+    return dict
 end
 
 
@@ -1212,6 +1356,8 @@ function load_CCIM_CtC_Spatial(file_path::String; min_obs::Union{Int, Nothing}=2
     ReceiverType <- NICHES_obj@meta.data$ReceivingType;
     interaction<- rownames(NICHES_obj);
     CellTypePair <- NICHES_obj@meta.data$VectorType;
+    x_coords <- NICHES_obj@meta.data$x;
+    y_coords<- NICHES_obj@meta.data$y;
     """
 
     #---Convert the data to Julia:
@@ -1220,6 +1366,8 @@ function load_CCIM_CtC_Spatial(file_path::String; min_obs::Union{Int, Nothing}=2
     @rget interaction
     @rget X
     @rget CellTypePair
+    @rget x_coords
+    @rget y_coords
 
     R"rm(list = ls())"
     R"gc()"
@@ -1228,6 +1376,8 @@ function load_CCIM_CtC_Spatial(file_path::String; min_obs::Union{Int, Nothing}=2
     ReceiverType = String.(ReceiverType);
     interaction = String.(interaction);
     CellTypePair = String.(CellTypePair);
+    x_coords = number_vector = parse.(Int, strip.(x_coords))
+    y_coords = number_vector = parse.(Int, strip.(y_coords))
 
     X = Matrix{Float32}(transpose(X));
 
@@ -1258,6 +1408,8 @@ function load_CCIM_CtC_Spatial(file_path::String; min_obs::Union{Int, Nothing}=2
     MD.obs_df[!, :SenderType] = SenderType;
     MD.obs_df[!, :ReceiverType] = ReceiverType;
     MD.obs_df[!, :CellTypePair] = CellTypePair;
+    MD.obs_df[!, :x] = x_coords;
+    MD.obs_df[!, :y] = y_coords;
 
     n, p = size(X);
 
@@ -1279,18 +1431,24 @@ function load_CCIM_NtC(file_path::String; min_obs::Union{Int, Nothing}=20, min_f
     X <- as.matrix(GetAssayData(object = NICHES_obj, assay = "NeighborhoodToCell", slot = "counts"));
     ReceiverType <- NICHES_obj@meta.data$ReceivingType;
     interaction<- rownames(NICHES_obj);
+    x_coords <- NICHES_obj@meta.data$x;
+    y_coords<- NICHES_obj@meta.data$y;
     """
 
     #---Convert the data to Julia:
     @rget ReceiverType
     @rget interaction
     @rget X
+    @rget x_coords
+    @rget y_coords
 
     R"rm(list = ls())"
     R"gc()"
 
     ReceiverType = String.(ReceiverType);
     interaction = String.(interaction);
+    x_coords = number_vector = parse.(Int, strip.(x_coords))
+    y_coords = number_vector = parse.(Int, strip.(y_coords))
 
     X = Matrix{Float32}(transpose(X));
 
@@ -1317,6 +1475,8 @@ function load_CCIM_NtC(file_path::String; min_obs::Union{Int, Nothing}=20, min_f
     #---Summarize meta data information:
     MD = MetaData(; featurename=interaction);
     MD.obs_df[!, :ReceiverType] = ReceiverType;
+    MD.obs_df[!, :x] = x_coords;
+    MD.obs_df[!, :y] = y_coords;
 
     n, p = size(X);
 
@@ -1338,18 +1498,24 @@ function load_CCIM_CtN(file_path::String; min_obs::Union{Int, Nothing}=20, min_f
     X <- as.matrix(GetAssayData(object = NICHES_obj, assay = "CellToNeighborhood", slot = "counts"));
     SenderType <- NICHES_obj@meta.data$SendingType;
     interaction<- rownames(NICHES_obj);
+    x_coords <- NICHES_obj@meta.data$x;
+    y_coords<- NICHES_obj@meta.data$y;
     """
 
     #---Convert the data to Julia:
     @rget SenderType
     @rget interaction
     @rget X
+    @rget x_coords
+    @rget y_coords
 
     R"rm(list = ls())"
     R"gc()"
 
     SenderType = String.(SenderType);
     interaction = String.(interaction);
+    x_coords = number_vector = parse.(Int, strip.(x_coords))
+    y_coords = number_vector = parse.(Int, strip.(y_coords))
 
     X = Matrix{Float32}(transpose(X));
 
@@ -1376,6 +1542,8 @@ function load_CCIM_CtN(file_path::String; min_obs::Union{Int, Nothing}=20, min_f
     #---Summarize meta data information:
     MD = MetaData(; featurename=interaction);
     MD.obs_df[!, :SenderType] = SenderType;
+    MD.obs_df[!, :x] = x_coords;
+    MD.obs_df[!, :y] = y_coords;
 
     n, p = size(X);
 

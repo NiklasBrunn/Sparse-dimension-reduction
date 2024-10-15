@@ -1,38 +1,25 @@
 #---Componentwise boosting functions:
 """
-    get_unibeta(X::AbstractMatrix{T}, y::AbstractVector{T}, denom::AbstractVector{T}, n::Int, p::Int) where T
+    get_unibeta(X::AbstractMatrix{T}, y::AbstractVector{T}, denom::AbstractVector{T}) where T
 
-Compute the univariate regression coefficients for each feature/predictor.
+Compute univariate beta coefficients for a matrix of predictor variables and a response vector efficiently using matrix multiplication.
 
 # Arguments
-- `X::AbstractMatrix{T}`: A matrix of predictors with dimensions `n` by `p`, where `n` is the number of observations (rows) and `p` is the number offeatures/predictors (columns).
-- `y::AbstractVector{T}`: A vector of responses with length `n`.
-- `denom::AbstractVector{T}`: A vector of denominators with length `p`, typically corresponding to `n - 1` if the data is already feature standardized, or another value specific to each predictor (usually the feature/predicor variances).
-- `n::Int`: The number of observations (rows in `X` and elements in `y`).
-- `p::Int`: The number of features/predictors (columns in `X` and elements in `denom`).
+- `X::AbstractMatrix{T}`: A matrix of predictor variables of type `T` with dimensions `n` (rows, representing observations) by `p` (columns, representing features).
+- `y::AbstractVector{T}`: A vector of responses of type `T` with length `n`.
+- `denom::AbstractVector{T}`: A vector of denominators of type `T` with length `p`, corresponding to the denominators for each feature.
 
 # Returns
-- `unibeta::Vector{T}`: A vector of length `p` containing the univariate regression coefficients for each predictor.
+- `unibeta::Vector{T}`: A vector of length `p` containing the univariate beta coefficients for each feature. The coefficients are computed as the dot product between each feature column in `X` and the response vector `y`. They are divided by the corresponding element in `denom`.
 
-# Description
-This function calculates the univariate regression coefficients for each predictor in `X` using the corresponding elements of the response vector `y`. For each predictor `j`, the coefficient is computed as the sum of the products of the predictor values and the response values across all observations, divided by the corresponding element in `denom`. The coefficient corresponds to the univariate ordinary linear least squares estimators.
-
-The univariate regression coefficient for predictor `j` is given by:
-
-    unibeta[j] = (sum(X[i, j] * y[i] for i in 1:n)) / denom[j]
+# Notes
+- This version uses matrix multiplication (`transpose(X) * y`) for efficient computation of the univariate beta coefficients.
 """
-function get_unibeta(X::AbstractMatrix{T}, y::AbstractVector{T}, denom::AbstractVector{T}, n::Int, p::Int) where T
-
-    unibeta = zeros(eltype(X), p)
-
-    for j = 1:p
-        for i = 1:n
-            unibeta[j] += X[i, j] * y[i]
-        end
-
-        unibeta[j] /= denom[j] #n - 1
-    end
-
+function get_unibeta(X::AbstractMatrix{T}, y::AbstractVector{T}, denom::AbstractVector{T}) where T
+    
+    unibeta = transpose(X) * y
+    unibeta ./= denom     
+    
     return unibeta
 end
 
@@ -64,17 +51,15 @@ This function implements an iterative componentwise L2-boosting procedure for up
 - This function is intended to be used within the context of training a BAE.
 """
 function compL2Boost!(BAE::BoostingAutoencoder, l::Int, X::AbstractMatrix{T}, y::AbstractVector{T}, denom::AbstractVector{T}) where T
-    n, p = size(X)
 
     β = BAE.coeffs[:, l]
 
     update_inds = findall(x->x!=0, β)
 
-    for step in 1:BAE.HP.M
+    for step in 1:BAE.HP.M   # Loop is not yet efficient but typically M=1
         res = y .- (X * β)
 
-        unibeta = get_unibeta(X, res, denom, n, p) # Currently the faster option
-        #unibeta = [dot(X[:, j], res) / denom[j] for j in 1:p] 
+        unibeta = get_unibeta(X, res, denom) 
 
         optindex = findmax(unibeta.^2 .* denom)[2]
 
@@ -86,13 +71,13 @@ function compL2Boost!(BAE::BoostingAutoencoder, l::Int, X::AbstractMatrix{T}, y:
 end
 
 """
-    disentangled_compL2Boost!(BAE::BoostingAutoencoder, batch::AbstractMatrix{T}, grads::AbstractMatrix{T}) where T
+    disentangled_compL2Boost!(BAE::BoostingAutoencoder, X::AbstractMatrix{T}, grads::AbstractMatrix{T}) where T
 
 Perform disentangled componentwise L2-boosting updates of the encoder weights of a Boosting Autoencoder (BAE).
 
 # Arguments
 - `BAE::BoostingAutoencoder`: A boosting autoencoder object containing model coefficients and hyperparameters (for more details see the documentation of `BoostingAutoencoder` and `Hyperparameters`).
-- `batch::AbstractMatrix{T}`: A matrix representing a batch of input data with dimensions `n` by `p`, where `n` is the number of observations and `p` is the number of features.
+- `X::AbstractMatrix{T}`: A matrix representing (a batch) of input data with dimensions `n` by `p`, where `n` is the number of observations and `p` is the number of features.
 - `grads::AbstractMatrix{T}`: Gradient of the scalar valued BAE reconstruction loss function w.r.t. the latent representation of the data in matrix form. The dimensions corresponding to the BAE's latent space. The negative gradients are used to determine the pseudo-responses for the boosting updates.
 
 # Description
@@ -100,7 +85,7 @@ This function implements a disentangled componentwise L2-boosting procedure on a
 
 The procedure works as follows:
 
-1. Compute the denominators (`denom`) as the sum of squared values in each column of the batch matrix (proportional to the variances of the features).
+1. Compute the denominators (`denom`) as the sum of squared values in each column of the (batch) matrix (proportional to the variances of the features).
 2. Compute a scaled version of the negative gradients (`Y`) for each latent dimension.
 3. For each latent dimension `l` (from 1 to `BAE.HP.zdim`):
     - Identify the indices of latent dimensions with zero coefficients, plus the current dimension `l` and store them in a vector.
@@ -115,9 +100,9 @@ The procedure works as follows:
 - This function is intended for use in scenarios where a BAE is trained to maintaining disentangled latent representations, i.e. for structuring the latent space.
 - The function employs a regularization term (using a small identity matrix) during the Cholesky decomposition to prevent numerical issues, such as singular matrices.
 """
-function disentangled_compL2Boost!(BAE::BoostingAutoencoder, batch::AbstractMatrix{T}, grads::AbstractMatrix{T}) where T
+function disentangled_compL2Boost!(BAE::BoostingAutoencoder, X::AbstractMatrix{T}, grads::AbstractMatrix{T}) where T
 
-    denom = vec(sum(batch .^ 2, dims=1))
+    denom = vec(sum(X.^2, dims=1))
 
     Y = scale(-grads, dims=2)
 
@@ -128,14 +113,14 @@ function disentangled_compL2Boost!(BAE::BoostingAutoencoder, batch::AbstractMatr
         if length(Inds) == BAE.HP.zdim
             y = Y[l, :]
 
-            compL2Boost!(BAE, l, batch, y, denom)
+            compL2Boost!(BAE, l, X, y, denom)
 
         else
-            curdata = batch * BAE.coeffs[:, Not(Inds)]
+            curdata = X * BAE.coeffs[:, Not(Inds)]
             curtarget = Y[l, :]
             
             m = size(curdata, 2)
-            Λ = convert(eltype(batch), 1.0e-6) .* Matrix(I, m, m) # Regularization term that prevents singular matrices (rarely happens)
+            Λ = convert(eltype(X), 1.0e-6) .* Matrix(I, m, m) # Regularization term that prevents singular matrices 
             XtX = curdata' * curdata .+ Λ
             XtY = curdata' * curtarget
             
@@ -143,7 +128,7 @@ function disentangled_compL2Boost!(BAE::BoostingAutoencoder, batch::AbstractMatr
 
             y = scale(curtarget .- (curdata * curestimate))
 
-            compL2Boost!(BAE, l, batch, y, denom)
+            compL2Boost!(BAE, l, X, y, denom)
         end
         
     end
@@ -151,56 +136,6 @@ function disentangled_compL2Boost!(BAE::BoostingAutoencoder, batch::AbstractMatr
 end
 
 #---training function for a BAE with the disentanglement constraint:
-"""
-    train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; 
-              MD::Union{Nothing, MetaData}=nothing, 
-              track_coeffs::Bool=false, 
-              save_data::Bool=false, 
-              data_path::Union{Nothing, String}=nothing, 
-              batchseed::Int=42) where T
-
-Train a Boosting Autoencoder (BAE) on the given data matrix.
-
-# Arguments
-- `X::AbstractMatrix{T}`: The input data matrix, where each row corresponds to an observation, e.g., a cell pair or a cell and each column corresponds to a feature, e.g., a ligand-receptor interaction or a gene.
-- `BAE::BoostingAutoencoder`: The BAE model to be trained, including hyperparameters for training. For more details about the model architecture or the training hyperparameters and default values see the documentation of `BoostingAutoencoder` and `Hyperparameters`.
-- `MD::Union{Nothing, MetaData}=nothing`: Optional metadata object containing extra information about the dataset, such as the feature names and observation labels. If provided, this object will be updated with clustering results and other metrics.
-- `track_coeffs::Bool=false`: If `true`, the coefficient updates of the BAE will be tracked and saved after each iteration.
-- `save_data::Bool=false`: If `true`, data at each epoch and results will be saved to the specified `data_path`. The data that is saved during training consists of the encoder weights, the mean batch loss per epoch, the entanglement score per epoch, the sparsity level per epoch and the clustering score per epoch.
-- `data_path::Union{Nothing, String}=nothing`: Path to the directory where training data and results will be saved. This parameter is required if `save_data` is `true`.
-- `batchseed::Int=42`: Seed for random number generation to ensure reproducibility of batch selection during training.
-
-# Description
-This function trains a Boosting Autoencoder (BAE) on the input data matrix `X` by integrating an iterative componentwise L2-boosting approach into the gradient-based optimization scheme for autoencoders. The training process can involve multiple restarts, where each restart reinitializes the encoder weights as zeros while maintaining the decoder parameters. Each zero-initialization is followed by a series of epochs in which the model is updated iteratively using mini-batches. The training process can be customized with options to save data during training progress, track the evolution of the coefficients, and store results in a specified directory.
-
-The training process includes:
-1. Seeding the random number generator for reproducibility.
-2. Validating the data type of the input matrix and issuing warnings if the type is not `Float32`.
-3. Optionally saving the training data and results to a specified directory.
-4. Setting up the optimizer and optionally initializing tracking variables for loss, sparsity, entanglement, clustering, and coefficients.
-5. Iteratively updating the BAE's coefficients using the disentangled componentwise L2-boosting approach.
-6. After all epochs, computing the latent representation, clustering results, and silhouette scores, and updating the metadata object (`MD`) with these results.
-
-# Side Effects
-- Updates the `BAE` object in-place with the learned coefficients and latent representations.
-- Optionally saves encoder weights, loss, sparsity, entanglement, and clustering scores to the specified `data_path`.
-- Updates the `MD` object with clustering and feature selection results.
-
-# Returns
-- `output_dict::Dict{String, Union{Vector{eltype(X)}, Vector{Any}}}`: A dictionary containing training metrics is `save_data=true` or `track_coeffs=true` such as:
-  - `"trainloss"`: Mean training loss per epoch.
-  - `"sparsity"`: Sparsity levels of the encoder weights after each epoch.
-  - `"entanglement"`: Entanglement scores of the latent representations.
-  - `"clustering"`: Clustering scores based on the softmax-transformed latent representations.
-  - `"silhouettes"`: Silhouette scores of the clustering results.
-  - `"coefficients"`: A 3D array where the encoder weights/coefficients are stored during training per update iteration if `track_coeffs` is `true`.
-
-# Notes
-- The function assumes the presence of a `MetaData` object `MD` if detailed tracking and analysis are required post-training.
-- The hyperparameters for training can be adapted by adapting the `BAE.HP` field of the BAE structure.
-- The `save_data` option must be accompanied by a valid `data_path`. If the directory does not exist, it will be created.
-- The function makes use of Flux for the ADAMW optimizer and gradient computation.
-"""
 function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{Nothing, MetaData}=nothing, track_coeffs::Bool=false, save_data::Bool=false, data_path::Union{Nothing, String}=nothing, batchseed::Int=42) where T
 
     Random.seed!(batchseed)
@@ -233,7 +168,7 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
     Xt = X'
     n = size(X, 1)
 
-    @info "Training BAE for $(BAE.HP.n_restarts) runs with $(BAE.HP.epochs) epochs per run and a batchsize of $(BAE.HP.batchsize), i.e., $(Int(round(BAE.HP.epochs * n / BAE.HP.batchsize))) update iterations per run."
+    @info "Training BAE for $(BAE.HP.n_runs) runs for a maximum number of $(BAE.HP.max_iter) epochs per run and a batchsize of $(BAE.HP.batchsize), i.e., a maximum of $(Int(round(BAE.HP.max_iter * n / BAE.HP.batchsize))) update iterations per run will be performed."
 
     opt = ADAMW(BAE.HP.η, (0.9, 0.999), BAE.HP.λ)
     opt_state = Flux.setup(opt, BAE.decoder)
@@ -244,11 +179,13 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
     clustering_score = []
     coefficients = []
 
-    for iter in 1:BAE.HP.n_restarts
+    errors = [Inf]
 
-        @info "Training run: $iter/$(BAE.HP.n_restarts) ..."
+    for run in 1:BAE.HP.n_runs
 
-        @showprogress for epoch in 1:BAE.HP.epochs
+        @info "Training run: $run/$(BAE.HP.n_runs) ..."
+
+        @showprogress for epoch in 1:BAE.HP.max_iter
 
             loader = Flux.Data.DataLoader(Xt, batchsize=BAE.HP.batchsize, shuffle=true) 
 
@@ -267,7 +204,7 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
                 disentangled_compL2Boost!(BAE, batch_t, grads[2])
                 Flux.update!(opt_state, BAE.decoder, grads[1])
 
-                if track_coeffs && (iter == BAE.HP.n_restarts)
+                if track_coeffs && (run == BAE.HP.n_runs)
                     push!(coefficients, copy(BAE.coeffs))
                 end
 
@@ -294,9 +231,17 @@ function train_BAE!(X::AbstractMatrix{T}, BAE::BoostingAutoencoder; MD::Union{No
                 writedlm(file_path, clustering_score)
             end
 
+            push!(errors, mean(batchLosses))
+            if !isnothing(BAE.HP.tol)
+                if abs.(errors[end] - errors[end-1]) < BAE.HP.tol  
+                    @info "Convergence criterion met. Training stopped after $epoch epochs."
+                    break
+                end
+            end
+
         end
 
-        if iter < BAE.HP.n_restarts
+        if run < BAE.HP.n_runs
             @info "Re-initialize encoder weights as zeros ..."
             BAE.coeffs = zeros(object_type, size(BAE.coeffs))
         end
