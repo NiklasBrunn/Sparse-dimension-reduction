@@ -4,7 +4,6 @@
 
 - [Installation](#Installation)
 - [Launch Jupyter notebooks](#Launch-Jupyter-notebooks)
-- [ToDo](#ToDo)
 
 
 ## Installation
@@ -55,8 +54,3 @@
     ```bash
     julia -e 'using IJulia; notebook()'
     ```
-
-
-
-## ToDo
-- [] Allow to load HDF5 files (Anndata / Python) and convert to Seurat for running NICHES via `anndataR`
