@@ -409,6 +409,10 @@ function get_topFeatures(BAE::BoostingAutoencoder, MD::MetaData)
         weights = weights[inds]
         sort_featurenames = MD.featurename[inds]
 
+        nonzero_inds = findall(x->x!=0, weights)
+        weights = weights[nonzero_inds]
+        sort_featurenames =  sort_featurenames[nonzero_inds]
+
         diffs = [weights[i] - weights[i+1] for i in 1:length(weights)-1]
         topGene_inds = findmax(diffs)[2]      
         sort_featurenames[1:topGene_inds]
