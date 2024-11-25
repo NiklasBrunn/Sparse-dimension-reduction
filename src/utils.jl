@@ -80,9 +80,9 @@ Y = Normalize(X, dims=2, rescale=10000)  # Normalizes over columns and scales th
 function Normalize(X::AbstractMatrix{T}; dims::Int=2, rescale::Union{Int, AbstractFloat}=10000) where T
 
     if dims == 1
-        @info "Normalizing matrix over the rows"
+        @info "Summing the elements per column"
     else
-        @info "Normalizing matrix over the colums"
+        @info "Summing the elements per row"
     end
 
     Z=zeros(eltype(X), size(X))
@@ -392,36 +392,226 @@ function get_important_genes(BAE::BoostingAutoencoder, MD::MetaData; save_data::
     return important_genes
 end
 
-function get_topFeatures(BAE::BoostingAutoencoder, MD::MetaData)
+#function get_topFeatures(BAE::BoostingAutoencoder, MD::MetaData)
     #Currently per latent dimension. Should it be updated such that top features per cluster are computed?
 
-    if isnothing(MD.featurename)
-        @warn "The metadata does not contain the feature names ..."
-        MD.featurename = ["$(j)" for j in 1:size(BAE.coeffs, 1)]
+#    if isnothing(MD.featurename)
+#        @warn "The metadata does not contain the feature names ..."
+#        MD.featurename = ["$(j)" for j in 1:size(BAE.coeffs, 1)]
+#    end
+
+#    dict = Dict{Int, Vector{String}}();
+
+#    for l in 1:size(BAE.coeffs, 2)
+
+#        weights = abs.(BAE.coeffs[:, l])
+#        inds = sortperm(weights; rev=true)
+#        weights = weights[inds]
+#        sort_featurenames = MD.featurename[inds]
+
+#        nonzero_inds = findall(x->x!=0, weights)
+#        weights = weights[nonzero_inds]
+#        sort_featurenames =  sort_featurenames[nonzero_inds]
+
+#        diffs = [weights[i] - weights[i+1] for i in 1:length(weights)-1]
+#        topGene_inds = findmax(diffs)[2]      
+#        sort_featurenames[1:topGene_inds]
+
+#        dict[l] = sort_featurenames[1:topGene_inds]
+#    end
+
+#    return dict
+#end
+
+function get_topFeatures(BAE::BoostingAutoencoder, MD::MetaData; 
+    method::String="Changepoint", 
+    n_topFeatures::Int=5, 
+    data_path::Union{AbstractString, Nothing}=nothing, 
+    save_data::Bool=false
+    )
+    
+    B = BAE.coeffs
+    featurenames = MD.featurename
+    abs_B = abs.(B)
+
+    dict = Dict{Int, Vector{String}}()
+
+    df = DataFrame(Dim=1:size(B, 2))
+
+    n_selfeatures_vec = []
+    n_topfeatures_vec = []
+    pct_vec_top = []
+    pct_vec = []
+
+    p = size(B, 1)
+
+    if method == "Changepoint"
+
+        @info "Finding top features using Changepoint method ..."
+
+        for l in 1:size(B, 2)
+
+            inds = sortperm(abs_B[:, l]; rev=true)
+            weights = abs_B[:, l][inds]
+            sort_featurenames = featurenames[inds]
+
+            nonzero_inds = findall(x->x!=0, weights)
+            weights = weights[nonzero_inds]
+            sort_featurenames =  sort_featurenames[nonzero_inds] 
+
+            diffs = [weights[i] - weights[i+1] for i in 1:length(weights)-1]
+            topFeatures_inds = findmax(diffs)[2]     
+            dict[l] = sort_featurenames[1:topFeatures_inds]
+
+            n_selfeatures = length(findall(x->x!=0, abs_B[:, l]))
+            n_topfeatures = length(weights[1:topFeatures_inds])
+            pct_topFeatures = round((n_topfeatures / p) * 100, digits=2)
+
+            pct = round((n_selfeatures / p) * 100, digits=2)
+
+            push!(n_selfeatures_vec, n_selfeatures)
+            push!(n_topfeatures_vec, n_topfeatures)
+            push!(pct_vec_top, pct_topFeatures)
+            push!(pct_vec, pct)
+        end
+
+    elseif method == "top"
+
+        @info "Finding top features using 'top' method ..."
+
+        for l in 1:size(B, 2)
+            inds = sortperm(abs_B[:, l]; rev=true)
+            weights = abs_B[:, l][inds]
+
+            dict[l] = featurenames[inds][1:n_topFeatures]
+
+            n_selfeatures = length(findall(x->x!=0, abs_B[:, l]))
+            n_topfeatures = length(weights[1:n_topFeatures])
+            pct_topFeatures = round((n_topfeatures / p) * 100, digits=2)
+
+            pct = round((n_selfeatures / p) * 100, digits=2)
+
+            push!(n_selfeatures_vec, n_selfeatures)
+            push!(n_topfeatures_vec, n_topfeatures)
+            push!(pct_vec_top, pct_topFeatures)
+            push!(pct_vec, pct)
+        end
+
+    else
+        @error "Method not recognized. Please use 'Changepoint' or 'top'."
     end
 
-    dict = Dict{Int, Vector{String}}();
+    df[:, "Nonzero features"] = n_selfeatures_vec
+    df[:, "Percentage nonzeroFeatures"] = pct_vec
+    df[:, "Top features"] = n_topfeatures_vec
+    df[:, "Percentage ChangepointFeatures"] = pct_vec_top
 
-    for l in 1:size(BAE.coeffs, 2)
 
-        weights = abs.(BAE.coeffs[:, l])
-        inds = sortperm(weights; rev=true)
-        weights = weights[inds]
-        sort_featurenames = MD.featurename[inds]
-
-        nonzero_inds = findall(x->x!=0, weights)
-        weights = weights[nonzero_inds]
-        sort_featurenames =  sort_featurenames[nonzero_inds]
-
-        diffs = [weights[i] - weights[i+1] for i in 1:length(weights)-1]
-        topGene_inds = findmax(diffs)[2]      
-        sort_featurenames[1:topGene_inds]
-
-        dict[l] = sort_featurenames[1:topGene_inds]
+    if save_data
+        if data_path == nothing
+            @error "Please provide a valid path to save the data."
+        else
+            CSV.write(data_path * "BAE_LatentDims_featureSelection_table.csv", df)
+        end
     end
 
-    return dict
+    return dict, df
 end
+
+function get_topFeatures(B::AbstractMatrix{T}, featurenames::AbstractVector{String}; 
+    method::String="Changepoint", 
+    n_topFeatures::Int=5, 
+    data_path::Union{AbstractString, Nothing}=nothing, 
+    save_data::Bool=false
+    ) where T
+    
+
+    abs_B = abs.(B)
+
+    dict = Dict{Int, Vector{String}}()
+
+    df = DataFrame(Dim=1:size(B, 2))
+
+    n_selfeatures_vec = []
+    n_topfeatures_vec = []
+    pct_vec_top = []
+    pct_vec = []
+
+    p = size(B, 1)
+
+    if method == "Changepoint"
+
+        @info "Finding top features using Changepoint method ..."
+
+        for l in 1:size(B, 2)
+
+            inds = sortperm(abs_B[:, l]; rev=true)
+            weights = abs_B[:, l][inds]
+            sort_featurenames = featurenames[inds]
+
+            nonzero_inds = findall(x->x!=0, weights)
+            weights = weights[nonzero_inds]
+            sort_featurenames =  sort_featurenames[nonzero_inds] 
+
+            diffs = [weights[i] - weights[i+1] for i in 1:length(weights)-1]
+            topFeatures_inds = findmax(diffs)[2]     
+            dict[l] = sort_featurenames[1:topFeatures_inds]
+
+            n_selfeatures = length(findall(x->x!=0, abs_B[:, l]))
+            n_topfeatures = length(weights[1:topFeatures_inds])
+            pct_topFeatures = round((n_topfeatures / p) * 100, digits=2)
+
+            pct = round((n_selfeatures / p) * 100, digits=2)
+
+            push!(n_selfeatures_vec, n_selfeatures)
+            push!(n_topfeatures_vec, n_topfeatures)
+            push!(pct_vec_top, pct_topFeatures)
+            push!(pct_vec, pct)
+        end
+
+    elseif method == "top"
+
+        @info "Finding top features using 'top' method ..."
+
+        for l in 1:size(B, 2)
+            inds = sortperm(abs_B[:, l]; rev=true)
+            weights = abs_B[:, l][inds]
+
+            dict[l] = featurenames[inds][1:n_topFeatures]
+
+            n_selfeatures = length(findall(x->x!=0, abs_B[:, l]))
+            n_topfeatures = length(weights[1:n_topFeatures])
+            pct_topFeatures = round((n_topfeatures / p) * 100, digits=2)
+
+            pct = round((n_selfeatures / p) * 100, digits=2)
+
+            push!(n_selfeatures_vec, n_selfeatures)
+            push!(n_topfeatures_vec, n_topfeatures)
+            push!(pct_vec_top, pct_topFeatures)
+            push!(pct_vec, pct)
+        end
+
+    else
+        @error "Method not recognized. Please use 'Changepoint' or 'top'."
+    end
+
+    df[:, "Nonzero features"] = n_selfeatures_vec
+    df[:, "Percentage nonzeroFeatures"] = pct_vec
+    df[:, "Top features"] = n_topfeatures_vec
+    df[:, "Percentage ChangepointFeatures"] = pct_vec_top
+
+
+    if save_data
+        if data_path == nothing
+            @error "Please provide a valid path to save the data."
+        else
+            CSV.write(data_path * "LatentDims_featureSelection_table.csv", df)
+        end
+    end
+
+    return dict, df
+end
+
 
 
 # Visualization:
